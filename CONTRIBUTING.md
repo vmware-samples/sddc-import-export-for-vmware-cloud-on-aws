@@ -14,7 +14,7 @@ You must also create a [Github](https://github.com/join){:target="_blank"} accou
 
 ## Download the Import/Export tool source code
 ```bash
-git clone https://github.com/vmware-samples/replace-with-correct-URL
+git clone https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws.git
 ```
 
 ## Configure git to sign code with your verified name and email
@@ -55,7 +55,7 @@ You can then submit a pull request (PR) to the maintainers - a step-by-step guid
 
 ## Submitting Bug Reports and Feature Requests
 
-Please submit bug reports and feature requests by using our GitHub [Issues](https://github.com/vmware-samples/URL/issues){:target="_blank"} page.
+Please submit bug reports and feature requests by using our GitHub [Issues](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/issues){:target="_blank"} page.
 
 Before you submit a bug report about the code in the repository, please check the Issues page to see whether someone has already reported the problem. In the bug report, be as specific as possible about the error and the conditions under which it occurred. On what version and build did it occur? What are the steps to reproduce the bug?
 
