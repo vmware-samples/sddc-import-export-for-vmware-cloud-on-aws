@@ -58,7 +58,7 @@ If you know git, clone the repo with
 git clone https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws.git
 ```
 
-If you don't know git, you can save [VMCImportExport.py](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/VMCImportExport.py) and [sddc_import_export.py](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/sddc_import_export.py) to a directory. Then create a subdirectory named [config_ini](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/tree/main/config_ini) and place [config.ini](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/config_ini/config.ini) in the subdirectory. Then add a subdirectory named 'json'.
+If you don't know git, you can save [VMCImportExport.py](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/VMCImportExport.py), [vcenter.py](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/vcenter.py) , and  [sddc_import_export.py](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/sddc_import_export.py) to a directory. Then create a subdirectory named [config_ini](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/tree/main/config_ini) and place [config.ini](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/config_ini/config.ini) in the subdirectory. Then add a subdirectory named 'json'.
 
 ### 1.3.3. Install Python modules and packages
 
