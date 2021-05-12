@@ -404,6 +404,7 @@ class VMCImportExport:
 
         payload = {}
         for group in groups:
+            skip_vm_expression = False
             skip_group = False
             for e in self.cgw_groups_import_exclude_list:
                 m = re.match(e,group["display_name"])
@@ -416,17 +417,28 @@ class VMCImportExport:
             payload["id"]=group["id"]
             payload["resource_type"]=group["resource_type"]
             payload["display_name"]=group["display_name"]
-            if "expression" in group:
-                payload["expression"]=group["expression"]
             if self.import_mode == "live":
                 myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
                 myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups/" + group["id"]
-                json_data = json.dumps(payload)
-                if self.sync_mode is True:
-                    creategrpresp = requests.patch(myURL,headers=myHeader,data=json_data)
+                if "expression" in group:
+                    group_expression = group["expression"]
+                    for item in group_expression:
+                        if item["resource_type"] == "ExternalIDExpression":
+                            skip_vm_expression = True
+                            print("This type of group cannot be imported as it relies on VM external ID.")
+                            break
                 else:
-                    creategrpresp = requests.put(myURL,headers=myHeader,data=json_data)
-                print("CGW Group " + payload["display_name"] + " has been imported.")
+                    continue
+                if skip_vm_expression == False:
+                    payload["expression"]=group["expression"]
+                    json_data = json.dumps(payload)
+                    if self.sync_mode is True:
+                        creategrpresp = requests.patch(myURL,headers=myHeader,data=json_data)
+                    else:
+                        creategrpresp = requests.put(myURL,headers=myHeader,data=json_data)
+                    print("CGW Group " + payload["display_name"] + " has been imported.")
+                else:
+                        break
             else:
                 print("TEST MODE - CGW Group " + payload["display_name"] + " would have been imported.")
             payload = {}
