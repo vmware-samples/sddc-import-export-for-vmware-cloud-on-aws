@@ -393,4 +393,4 @@ Add the following files individually to the function code, or zip them up and up
 
 Change the Handler runtime settings to invoke_lambda.lambda_handler
 
-Execute your Lambda function
+Execute your Lambda function. Although it is possible to configure values in the config_ini files that you upload to the function code, it might be preferable to pass the required values via command line argument. See [invoke_lambda.py](invoke_lambda.py) for an example.
