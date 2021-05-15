@@ -19,6 +19,7 @@
         - [1.3.7. Update vcenter.ini (optional)](#137-update-vcenterini-optional)
     - [1.4. Running the script](#14-running-the-script)
         - [1.4.1. Export](#141-export)
+            - [1.4.1.1. Exclusions](#1411-exclusions)
         - [1.4.2. Import](#142-import)
         - [1.4.3. Export-Import](#143-export-import)
         - [1.4.4. Export NSX-T on-prem](#144-export-nsx-t-on-prem)
@@ -228,6 +229,10 @@ If all of the export options are enabled, this will export a set of files:
 A config.ini flag named 'export_history' allows for the JSON files to be zipped for archival purposes. A related configuration option named 'max_export_history_files' lets you control how many zipped archive files are retained.
 
 Export is read-only and will not make any changes to your source SDDC.
+
+#### 1.4.1.1. Exclusions
+
+Manual VM memberships in groups are not supported, they will be filtered out of the export.
 
 ### 1.4.2. Import
 
