@@ -625,8 +625,12 @@ def main(args):
             ioObj.importSDDCPublicIPs()
 
         if ioObj.nat_import is True:
-            print("Beginning NAT import...")
-            ioObj.importSDDCNats()
+            if ioObj.public_import is False:
+                print("Public IP import set to false, skipping and disabling NAT import")
+                ioObj.nat_import = False
+            else:
+                print("Beginning NAT import...")
+                ioObj.importSDDCNats()
 
         if ioObj.service_access_import is True:
             print("Beginning Service Access import...")
