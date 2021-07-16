@@ -82,7 +82,7 @@ def main(args):
                                     "python sddc_import_export.py -o import\n\n"
                                     "Import an SDDC from a zipfile:\n"
                                     "python sddc_import_export.py -o import -i json/2020-12-15_10-33-43_json-export.zip\n\n")                                
-    ap.add_argument("-o","--operation", required=True, choices=['import-nsx','export-nsx','import','export','export-import','check-vmc-ini','export-vcenter','import-vcenter'], help="SDDC-to-SDDC operations: import, export, or export and then immediately import. check-vmc-ini displays the currently configured Org and SDDC for import and export operations. export-nsx to export an on-prem NSX config, then import-nsx to import it to VMC. export-vcenter and import-vcenter to export and import vCenter configs.")
+    ap.add_argument("-o","--operation", required=True, choices=['import-nsx','export-nsx','import','export','export-import','check-vmc-ini','export-vcenter','import-vcenter','usersync'], help="SDDC-to-SDDC operations: import, export, or export and then immediately import. check-vmc-ini displays the currently configured Org and SDDC for import and export operations. export-nsx to export an on-prem NSX config, then import-nsx to import it to VMC. export-vcenter and import-vcenter to export and import vCenter configs.")
     ap.add_argument("-et","--export-type", required=False, choices=['os','s3'],help="os for a regular export, s3 for export to S3 bucket")
     ap.add_argument("-ef","--export-folder",required=False,help="Export folder location")
     import_group = ap.add_mutually_exclusive_group()
@@ -176,6 +176,44 @@ def main(args):
     ## Moving the import section above the export section would break this intent #
     ###############################################################################
 
+    if intent_name == "usersync":
+        no_intent_found = False
+        ioObj.getAccessToken(ioObj.source_refresh_token)
+        if (ioObj.access_token == ""):
+            print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
+            sys.exit()
+        retval = ioObj.searchOrgUser(ioObj.source_org_id,"pkremer@vmware.com")
+        if retval is False:
+            print("API error searching for source object")
+        else:
+            if len(ioObj.user_search_results_json['results']) > 0:
+                template_user_json = ioObj.user_search_results_json['results'][0]
+                template_user_roles = template_user_json['serviceRoles']
+                retval = ioObj.convertServiceRolePayload(template_user_roles)
+                payload = {}
+                payload = ioObj.convertedServiceRolePayload
+                print(json.dumps(payload))
+
+                retval = ioObj.searchOrgUser(ioObj.source_org_id,"nospam@vmware.com")
+                if retval is False:
+                    print('API error searching for dest object')
+                else:
+                    if len(ioObj.user_search_results_json['results']) > 0:
+                        dest_user_json = ioObj.user_search_results_json['results'][0]
+                        print('---')
+                        #print (dest_user_json)
+                        print('---')
+                        dest_user_roles = dest_user_json['serviceRoles']
+                        myURL =  ioObj.strCSPProdURL + '/csp/gateway/am/api/v3/users/' + dest_user_json['user']['userId'] + '/orgs/' + ioObj.source_org_id + "/roles"
+                        print( myURL)
+                        response = ioObj.invokeVMCPATCH(myURL,json.dumps(payload))
+                        print (ioObj.lastJSONResponse)
+                        print(response.status_code)
+                    else:
+                        print('No dest object found.')
+            else:
+                print('No source object found.')
+
     if intent_name == "export-vcenter":
         no_intent_found = False
         if ioObj.export_vcenter_folders:
@@ -185,7 +223,6 @@ def main(args):
             srcdc.export_folder_paths(ioObj.export_path / ioObj.vcenter_folders_filename)
             print('Export complete.')
     
-
     if intent_name == "import-vcenter":
         no_intent_found = False
         if ioObj.import_vcenter_folders:
