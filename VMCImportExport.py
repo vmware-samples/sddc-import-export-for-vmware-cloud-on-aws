@@ -66,6 +66,8 @@ class VMCImportExport:
         self.network_import_exclude_list = []
         self.export_vcenter_folders = False
         self.import_vcenter_folders = False
+        self.user_search_results_json = ""
+        self.convertedServiceRolePayload = ""
         self.ConfigLoader()
     
     def ConfigLoader(self):
@@ -1011,6 +1013,36 @@ class VMCImportExport:
                 else:
                     print("TEST MODE - Service",service["display_name"],"would have been imported.")
 
+    def convertServiceRolePayload(self, sourcePayload: str) -> bool:
+        self.convertedServiceRolePayload = {}
+        servicedefs = []
+        for servicedef in sourcePayload:
+            modified_def = {}
+            role = {}
+            modified_def['serviceDefinitionId'] =  servicedef['serviceDefinitionId']
+            roles = []
+            for r in servicedef['serviceRoles']:
+                modified_role = {}
+                modified_role['name'] = r['name']
+                modified_role['roleName'] = r['roleName']
+                modified_role['expiresAt'] = r['expiresAt']
+                roles.append(modified_role)
+            modified_def['rolesToAdd'] = roles
+            servicedefs.append( modified_def )
+
+        self.convertedServiceRolePayload['serviceRoles'] = servicedefs
+        return True
+
+    def invokeCSPGET(self,url: str) -> requests.Response:
+        try:
+            response = requests.get(url,headers= {"Authorization":"Bearer " + self.access_token})
+            if response.status_code != 200:
+                self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+            return response
+        except Exception as e:
+                self.lastJSONResponse = e
+                return None
+
     def invokeVMCGET(self,url: str) -> requests.Response:
         """Invokes a VMC On AWS GET request"""
         myHeader = {'csp-auth-token': self.access_token}
@@ -1022,7 +1054,19 @@ class VMCImportExport:
         except Exception as e:
                 self.lastJSONResponse = e
                 return None
-    
+
+    def invokeVMCPATCH(self, url: str,json_data: str) -> requests.Response:
+        """Invokes a VMC on AWS PATCH request"""
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        try:
+            response = requests.patch(url,headers=myHeader,data=json_data)
+            if response.status_code != 200:
+                self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+            return response
+        except Exception as e:
+            self.lastJSONResponse = e
+            return None
+
     def invokeNSXTGET(self,url: str) -> requests.Response:
         myHeader = {"Content-Type": "application/json","Accept": "application/json"}
         try:
@@ -1736,8 +1780,6 @@ class VMCImportExport:
 
         return successval
         
-
-
     def getAccessToken(self,myRefreshToken):
         """ Gets the Access Token using the Refresh Token """
         params = {'api_token': myRefreshToken}
@@ -1928,3 +1970,12 @@ class VMCImportExport:
         except:
             jsonResponse = ""
         return jsonResponse
+
+    def searchOrgUser(self,orgid,userSearchTerm):
+        myURL = (self.strCSPProdURL + "/csp/gateway/am/api/orgs/" + orgid + "/users/search?userSearchTerm=" + userSearchTerm)
+        response = self.invokeCSPGET(myURL)
+        if response is None or response.status_code != 200:
+            return False
+
+        self.user_search_results_json = response.json()
+        return True
