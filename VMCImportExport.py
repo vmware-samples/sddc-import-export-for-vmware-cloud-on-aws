@@ -68,6 +68,8 @@ class VMCImportExport:
         self.import_vcenter_folders = False
         self.user_search_results_json = ""
         self.convertedServiceRolePayload = ""
+        self.RoleSyncSourceUserEmail = ""
+        self.RoleSyncDestUserEmails = {}
         self.ConfigLoader()
     
     def ConfigLoader(self):
@@ -1014,6 +1016,7 @@ class VMCImportExport:
                     print("TEST MODE - Service",service["display_name"],"would have been imported.")
 
     def convertServiceRolePayload(self, sourcePayload: str) -> bool:
+        """Converts a ServiceRole payload from its default format to the format required to add it to a User. Saves results to convertedServiceRolePayload """
         self.convertedServiceRolePayload = {}
         servicedefs = []
         for servicedef in sourcePayload:
@@ -1032,6 +1035,27 @@ class VMCImportExport:
 
         self.convertedServiceRolePayload['serviceRoles'] = servicedefs
         return True
+
+    def syncRolesToDestinationUsers(self):
+        """ Uses the payload built by convertServiceRolePayload to update user accounts"""
+        for email in self.RoleSyncDestUserEmails:
+            print(f'Looking up destination user {email}')
+            retval = self.searchOrgUser(self.source_org_id,email)
+            if retval is False:
+                print('API error searching for ' + self.RoleSyncDestUserEmails)
+            else:
+                if len(self.user_search_results_json['results']) > 0:
+                    dest_user_json = self.user_search_results_json['results'][0]
+                    dest_user_roles = dest_user_json['serviceRoles']
+                    myURL =  self.strCSPProdURL + '/csp/gateway/am/api/v3/users/' + dest_user_json['user']['userId'] + '/orgs/' + self.source_org_id + "/roles"
+                    if self.import_mode == "live":
+                        response = self.invokeVMCPATCH(myURL,json.dumps(self.convertedServiceRolePayload))
+                        if response.status_code == 200:
+                            print (f'Role sync success: {self.RoleSyncSourceUserEmail}->{email}')
+                    else:
+                        print(f'TEST MODE - would have synced {self.RoleSyncSourceUserEmail}->{email}')
+                else:
+                    print('Could not find user with email ' + email)
 
     def invokeCSPGET(self,url: str) -> requests.Response:
         try:

@@ -81,8 +81,8 @@ def main(args):
                                     "Import an SDDC:\n"
                                     "python sddc_import_export.py -o import\n\n"
                                     "Import an SDDC from a zipfile:\n"
-                                    "python sddc_import_export.py -o import -i json/2020-12-15_10-33-43_json-export.zip\n\n")                                
-    ap.add_argument("-o","--operation", required=True, choices=['import-nsx','export-nsx','import','export','export-import','check-vmc-ini','export-vcenter','import-vcenter','usersync'], help="SDDC-to-SDDC operations: import, export, or export and then immediately import. check-vmc-ini displays the currently configured Org and SDDC for import and export operations. export-nsx to export an on-prem NSX config, then import-nsx to import it to VMC. export-vcenter and import-vcenter to export and import vCenter configs.")
+                                    "python sddc_import_export.py -o import -i json/2020-12-15_10-33-43_json-export.zip\n\n")
+    ap.add_argument("-o","--operation", required=True, choices=['import-nsx','export-nsx','import','export','export-import','check-vmc-ini','export-vcenter','import-vcenter','rolesync'], help="SDDC-to-SDDC operations: import, export, or export and then immediately import. check-vmc-ini displays the currently configured Org and SDDC for import and export operations. export-nsx to export an on-prem NSX config, then import-nsx to import it to VMC. export-vcenter and import-vcenter to export and import vCenter configs.")
     ap.add_argument("-et","--export-type", required=False, choices=['os','s3'],help="os for a regular export, s3 for export to S3 bucket")
     ap.add_argument("-ef","--export-folder",required=False,help="Export folder location")
     import_group = ap.add_mutually_exclusive_group()
@@ -97,6 +97,8 @@ def main(args):
     ap.add_argument("-s3aid","--aws-s3-export-access-id", required=False,help="AWS Access ID for export to S3")
     ap.add_argument("-s3ase","--aws-s3-export-access-secret", required=False,help="AWS Secret for export to S3")
     ap.add_argument("-s3b","--aws-s3-export-bucket", required=False,help="AWS bucket name for export to S3")
+    ap.add_argument("-rss","--role-sync-source-user-email", required=False, help="The source email address used as a template for syncing roles")
+    ap.add_argument("-rsd","--role-sync-dest-user-emails", required=False, help="The dest email addresses used as a target for syncing roles, formatted as a set")
 
     args = ap.parse_args(args)
 
@@ -163,6 +165,14 @@ def main(args):
         ioObj.aws_s3_export_bucket = args.aws_s3_export_bucket
         print('Loaded AWS S3 export bucket from command line')
 
+    if args.role_sync_source_user_email:
+        ioObj.RoleSyncSourceUserEmail = args.role_sync_source_user_email
+        print('Loaded role sync source user email from command line')
+
+    if args.role_sync_dest_user_emails:
+        ioObj.RoleSyncDestUserEmails = args.role_sync_dest_user_emails.split(',')
+        print('Loaded role sync dest user emails from command line')
+
     # Variable added so we can have an intent run multiple operations
     no_intent_found = True
 
@@ -176,13 +186,14 @@ def main(args):
     ## Moving the import section above the export section would break this intent #
     ###############################################################################
 
-    if intent_name == "usersync":
+    if intent_name == "rolesync":
         no_intent_found = False
         ioObj.getAccessToken(ioObj.source_refresh_token)
         if (ioObj.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
-        retval = ioObj.searchOrgUser(ioObj.source_org_id,"pkremer@vmware.com")
+        print (f'Looking up template user {ioObj.RoleSyncSourceUserEmail}')
+        retval = ioObj.searchOrgUser(ioObj.source_org_id,ioObj.RoleSyncSourceUserEmail)
         if retval is False:
             print("API error searching for source object")
         else:
@@ -192,25 +203,7 @@ def main(args):
                 retval = ioObj.convertServiceRolePayload(template_user_roles)
                 payload = {}
                 payload = ioObj.convertedServiceRolePayload
-                print(json.dumps(payload))
-
-                retval = ioObj.searchOrgUser(ioObj.source_org_id,"nospam@vmware.com")
-                if retval is False:
-                    print('API error searching for dest object')
-                else:
-                    if len(ioObj.user_search_results_json['results']) > 0:
-                        dest_user_json = ioObj.user_search_results_json['results'][0]
-                        print('---')
-                        #print (dest_user_json)
-                        print('---')
-                        dest_user_roles = dest_user_json['serviceRoles']
-                        myURL =  ioObj.strCSPProdURL + '/csp/gateway/am/api/v3/users/' + dest_user_json['user']['userId'] + '/orgs/' + ioObj.source_org_id + "/roles"
-                        print( myURL)
-                        response = ioObj.invokeVMCPATCH(myURL,json.dumps(payload))
-                        print (ioObj.lastJSONResponse)
-                        print(response.status_code)
-                    else:
-                        print('No dest object found.')
+                retval = ioObj.syncRolesToDestinationUsers()
             else:
                 print('No source object found.')
 
