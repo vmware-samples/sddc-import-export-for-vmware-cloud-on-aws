@@ -66,6 +66,10 @@ class VMCImportExport:
         self.network_import_exclude_list = []
         self.export_vcenter_folders = False
         self.import_vcenter_folders = False
+        self.user_search_results_json = ""
+        self.convertedServiceRolePayload = ""
+        self.RoleSyncSourceUserEmail = ""
+        self.RoleSyncDestUserEmails = {}
         self.ConfigLoader()
     
     def ConfigLoader(self):
@@ -102,7 +106,7 @@ class VMCImportExport:
         self.export_purge_before_run  = self.loadConfigFlag(config,"exportConfig","export_purge_before_run")
         self.export_purge_after_zip   = self.loadConfigFlag(config,"exportConfig","export_purge_after_zip")
         self.append_sddc_id_to_zip    = self.loadConfigFlag(config,"exportConfig","append_sddc_id_to_zip")
-        
+
         self.max_export_history_files = int(config.get("exportConfig", "max_export_history_files"))
         self.export_type          = self.loadConfigFilename(config,"exportConfig","export_type")
         self.import_mode_live_warning = self.loadConfigFlag(config,"importConfig","import_mode_live_warning")
@@ -175,7 +179,7 @@ class VMCImportExport:
         self.vpn_dpd_filename       = self.loadConfigFilename(config,"importConfig","vpn_dpd_filename")
         self.vpn_tunnel_filename    = self.loadConfigFilename(config,"importConfig","vpn_tunnel_filename")
         self.vpn_bgp_filename       = self.loadConfigFilename(config,"importConfig","vpn_bgp_filename")
-        self.vpn_local_bgp_filename = self.loadConfigFilename(config,"importConfig","vpn_local_bgp_filename")        
+        self.vpn_local_bgp_filename = self.loadConfigFilename(config,"importConfig","vpn_local_bgp_filename")
         self.vpn_l3_filename        = self.loadConfigFilename(config,"importConfig","vpn_l3_filename")
         self.vpn_l2_filename        = self.loadConfigFilename(config,"importConfig","vpn_l2_filename")
         self.vpn_disable_on_import  = self.loadConfigFlag(config,"importConfig","vpn_disable_on_import")
@@ -210,7 +214,10 @@ class VMCImportExport:
         #SDDC Info
         self.sddc_info_filename     = self.loadConfigFilename(config,"exportConfig","sddc_info_filename")
         self.sddc_info_hide_sensitive_data = self.loadConfigFlag(config,"exportConfig","sddc_info_hide_sensitive_data")
-        
+
+        #CSP
+        self.RoleSyncSourceUserEmail = config.get("exportConfig","role_sync_source_user_email")
+        self.RoleSyncDestUserEmails = config.get("importConfig","role_sync_dest_user_emails").split('|')
 
     def purgeJSONfiles(self):
         """Removes the JSON export files before a new export"""
@@ -1011,6 +1018,58 @@ class VMCImportExport:
                 else:
                     print("TEST MODE - Service",service["display_name"],"would have been imported.")
 
+    def convertServiceRolePayload(self, sourcePayload: str) -> bool:
+        """Converts a ServiceRole payload from its default format to the format required to add it to a User. Saves results to convertedServiceRolePayload """
+        self.convertedServiceRolePayload = {}
+        servicedefs = []
+        for servicedef in sourcePayload:
+            modified_def = {}
+            role = {}
+            modified_def['serviceDefinitionId'] =  servicedef['serviceDefinitionId']
+            roles = []
+            for r in servicedef['serviceRoles']:
+                modified_role = {}
+                modified_role['name'] = r['name']
+                modified_role['roleName'] = r['roleName']
+                modified_role['expiresAt'] = r['expiresAt']
+                roles.append(modified_role)
+            modified_def['rolesToAdd'] = roles
+            servicedefs.append( modified_def )
+
+        self.convertedServiceRolePayload['serviceRoles'] = servicedefs
+        return True
+
+    def syncRolesToDestinationUsers(self):
+        """ Uses the payload built by convertServiceRolePayload to update user accounts"""
+        for email in self.RoleSyncDestUserEmails:
+            print(f'Looking up destination user {email}')
+            retval = self.searchOrgUser(self.dest_org_id,email)
+            if retval is False:
+                print('API error searching for ' + self.RoleSyncDestUserEmails)
+            else:
+                if len(self.user_search_results_json['results']) > 0:
+                    dest_user_json = self.user_search_results_json['results'][0]
+                    dest_user_roles = dest_user_json['serviceRoles']
+                    myURL =  self.strCSPProdURL + '/csp/gateway/am/api/v3/users/' + dest_user_json['user']['userId'] + '/orgs/' + self.source_org_id + "/roles"
+                    if self.import_mode == "live":
+                        response = self.invokeVMCPATCH(myURL,json.dumps(self.convertedServiceRolePayload))
+                        if response.status_code == 200:
+                            print (f'Role sync success: {self.RoleSyncSourceUserEmail}->{email}')
+                    else:
+                        print(f'TEST MODE - would have synced {self.RoleSyncSourceUserEmail}->{email}')
+                else:
+                    print('Could not find user with email ' + email)
+
+    def invokeCSPGET(self,url: str) -> requests.Response:
+        try:
+            response = requests.get(url,headers= {"Authorization":"Bearer " + self.access_token})
+            if response.status_code != 200:
+                self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+            return response
+        except Exception as e:
+                self.lastJSONResponse = e
+                return None
+
     def invokeVMCGET(self,url: str) -> requests.Response:
         """Invokes a VMC On AWS GET request"""
         myHeader = {'csp-auth-token': self.access_token}
@@ -1022,7 +1081,19 @@ class VMCImportExport:
         except Exception as e:
                 self.lastJSONResponse = e
                 return None
-    
+
+    def invokeVMCPATCH(self, url: str,json_data: str) -> requests.Response:
+        """Invokes a VMC on AWS PATCH request"""
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        try:
+            response = requests.patch(url,headers=myHeader,data=json_data)
+            if response.status_code != 200:
+                self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+            return response
+        except Exception as e:
+            self.lastJSONResponse = e
+            return None
+
     def invokeNSXTGET(self,url: str) -> requests.Response:
         myHeader = {"Content-Type": "application/json","Accept": "application/json"}
         try:
@@ -1736,8 +1807,6 @@ class VMCImportExport:
 
         return successval
         
-
-
     def getAccessToken(self,myRefreshToken):
         """ Gets the Access Token using the Refresh Token """
         params = {'api_token': myRefreshToken}
@@ -1928,3 +1997,12 @@ class VMCImportExport:
         except:
             jsonResponse = ""
         return jsonResponse
+
+    def searchOrgUser(self,orgid,userSearchTerm):
+        myURL = (self.strCSPProdURL + "/csp/gateway/am/api/orgs/" + orgid + "/users/search?userSearchTerm=" + userSearchTerm)
+        response = self.invokeCSPGET(myURL)
+        if response is None or response.status_code != 200:
+            return False
+
+        self.user_search_results_json = response.json()
+        return True
