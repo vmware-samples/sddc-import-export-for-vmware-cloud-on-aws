@@ -106,7 +106,7 @@ class VMCImportExport:
         self.export_purge_before_run  = self.loadConfigFlag(config,"exportConfig","export_purge_before_run")
         self.export_purge_after_zip   = self.loadConfigFlag(config,"exportConfig","export_purge_after_zip")
         self.append_sddc_id_to_zip    = self.loadConfigFlag(config,"exportConfig","append_sddc_id_to_zip")
-        
+
         self.max_export_history_files = int(config.get("exportConfig", "max_export_history_files"))
         self.export_type          = self.loadConfigFilename(config,"exportConfig","export_type")
         self.import_mode_live_warning = self.loadConfigFlag(config,"importConfig","import_mode_live_warning")
@@ -179,7 +179,7 @@ class VMCImportExport:
         self.vpn_dpd_filename       = self.loadConfigFilename(config,"importConfig","vpn_dpd_filename")
         self.vpn_tunnel_filename    = self.loadConfigFilename(config,"importConfig","vpn_tunnel_filename")
         self.vpn_bgp_filename       = self.loadConfigFilename(config,"importConfig","vpn_bgp_filename")
-        self.vpn_local_bgp_filename = self.loadConfigFilename(config,"importConfig","vpn_local_bgp_filename")        
+        self.vpn_local_bgp_filename = self.loadConfigFilename(config,"importConfig","vpn_local_bgp_filename")
         self.vpn_l3_filename        = self.loadConfigFilename(config,"importConfig","vpn_l3_filename")
         self.vpn_l2_filename        = self.loadConfigFilename(config,"importConfig","vpn_l2_filename")
         self.vpn_disable_on_import  = self.loadConfigFlag(config,"importConfig","vpn_disable_on_import")
@@ -214,7 +214,10 @@ class VMCImportExport:
         #SDDC Info
         self.sddc_info_filename     = self.loadConfigFilename(config,"exportConfig","sddc_info_filename")
         self.sddc_info_hide_sensitive_data = self.loadConfigFlag(config,"exportConfig","sddc_info_hide_sensitive_data")
-        
+
+        #CSP
+        self.RoleSyncSourceUserEmail = config.get("exportConfig","role_sync_source_user_email")
+        self.RoleSyncDestUserEmails = config.get("importConfig","role_sync_dest_user_emails").split('|')
 
     def purgeJSONfiles(self):
         """Removes the JSON export files before a new export"""
