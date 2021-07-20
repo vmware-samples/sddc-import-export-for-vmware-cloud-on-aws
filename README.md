@@ -28,6 +28,7 @@
         - [1.4.7. Import vCenter](#147-import-vcenter)
         - [1.4.8. Import from zip archive](#148-import-from-zip-archive)
         - [1.4.9. Running S3 export as a Lambda function](#149-running-s3-export-as-a-lambda-function)
+        - [1.4.10. Cloud Services Platform Role Sync](#1410-cloud-services-platform-role-sync)
 
 <!-- /TOC -->
 ## 1.2. Overview
@@ -394,3 +395,44 @@ Add the following files individually to the function code, or zip them up and up
 Change the Handler runtime settings to invoke_lambda.lambda_handler
 
 Execute your Lambda function. Although it is possible to configure values in the config_ini files that you upload to the function code, it might be preferable to pass the required values via command line argument. See [invoke_lambda.py](invoke_lambda.py) for an example.
+
+
+### 1.4.10. Cloud Services Platform Role Sync
+
+You can sync user roles with the rolesync option. 
+
+First, configure a template account in the Cloud Services Platform, granting it all of the roles you want to synchronize.
+
+Next, configure the `role_sync_source_user_email` poperty in `config.ini` with the email address of your template account - for this example, we set it to template@vmware.com. 
+
+Then, configure the `role_sync_dest_user_emails` property in `config.ini` with the email address(es) of your destination accounts. These accounts must already exist for the sync to work.
+
+You can then run the sync:
+
+```bash
+python3 sddc_import_export.py -o rolesync
+```
+
+Example output:
+```bash
+Looking up template user template@vmware.com
+Looking up destination user destination@vmware.com
+Role sync success: template@vmware.com->destination@vmware.com
+```
+
+You can also run the sync directly from the command line without configuring `config.ini`:
+
+```bash
+python3 sddc_import_export.py -o rolesync -rss template@vmware.com -rsd user1@vmware.com,user2@vmware.com
+```
+
+Example output:
+```bash
+loaded role sync source user email from command line
+Loaded role sync dest user emails from command line
+Looking up template user template@vmware.com
+Looking up destination user user1@vmware.com
+Role sync success: template@vmware.com->user1@vmware.com
+Looking up destination user user2@vmware.com
+Role sync success: template@vmware.com->user2@vmware.com
+```
