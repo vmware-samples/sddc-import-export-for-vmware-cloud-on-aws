@@ -1043,7 +1043,7 @@ class VMCImportExport:
         """ Uses the payload built by convertServiceRolePayload to update user accounts"""
         for email in self.RoleSyncDestUserEmails:
             print(f'Looking up destination user {email}')
-            retval = self.searchOrgUser(self.source_org_id,email)
+            retval = self.searchOrgUser(self.dest_org_id,email)
             if retval is False:
                 print('API error searching for ' + self.RoleSyncDestUserEmails)
             else:
