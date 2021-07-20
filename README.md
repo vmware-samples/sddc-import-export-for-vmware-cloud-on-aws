@@ -399,7 +399,8 @@ Execute your Lambda function. Although it is possible to configure values in the
 
 ### 1.4.10. Cloud Services Platform Role Sync
 
-You can sync user roles with the rolesync option. 
+You can sync user roles with the rolesync option.
+*Note:* the API tokens you use must have Org Owner permissions. You can sync across orgs by using a different source and destination OrgID. Alternatively, if your sync template and destinations are in the same org, you can configure the source and destination OrgIDs to be identical.
 
 First, configure a template account in the Cloud Services Platform, granting it all of the roles you want to synchronize.
 
