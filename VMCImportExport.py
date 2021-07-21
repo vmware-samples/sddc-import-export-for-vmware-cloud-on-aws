@@ -1045,16 +1045,21 @@ class VMCImportExport:
             print(f'Looking up destination user {email}')
             retval = self.searchOrgUser(self.dest_org_id,email)
             if retval is False:
-                print('API error searching for ' + self.RoleSyncDestUserEmails)
+                print('API error searching for ' + str(self.RoleSyncDestUserEmails))
             else:
                 if len(self.user_search_results_json['results']) > 0:
                     dest_user_json = self.user_search_results_json['results'][0]
+                    userId = dest_user_json['user']['userId']
+                    print(f'userId for {email} = {userId}')
                     dest_user_roles = dest_user_json['serviceRoles']
-                    myURL =  self.strCSPProdURL + '/csp/gateway/am/api/v3/users/' + dest_user_json['user']['userId'] + '/orgs/' + self.source_org_id + "/roles"
+                    myURL =  self.strCSPProdURL + '/csp/gateway/am/api/v3/users/' + userId + '/orgs/' + self.source_org_id + "/roles"
                     if self.import_mode == "live":
                         response = self.invokeVMCPATCH(myURL,json.dumps(self.convertedServiceRolePayload))
                         if response.status_code == 200:
                             print (f'Role sync success: {self.RoleSyncSourceUserEmail}->{email}')
+                        else:
+                            self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+                            print(f'API error: {self.lastJSONResponse}')
                     else:
                         print(f'TEST MODE - would have synced {self.RoleSyncSourceUserEmail}->{email}')
                 else:
@@ -2002,6 +2007,7 @@ class VMCImportExport:
         myURL = (self.strCSPProdURL + "/csp/gateway/am/api/orgs/" + orgid + "/users/search?userSearchTerm=" + userSearchTerm)
         response = self.invokeCSPGET(myURL)
         if response is None or response.status_code != 200:
+            print(f'Error: {response.status_code}, {response.text}')
             return False
 
         self.user_search_results_json = response.json()

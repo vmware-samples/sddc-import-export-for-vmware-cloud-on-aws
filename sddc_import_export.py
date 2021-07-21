@@ -190,7 +190,7 @@ def main(args):
         no_intent_found = False
         ioObj.getAccessToken(ioObj.source_refresh_token)
         if (ioObj.access_token == ""):
-            print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
+            print("Unable to retrieve source access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
         print (f'Looking up template user {ioObj.RoleSyncSourceUserEmail}')
         retval = ioObj.searchOrgUser(ioObj.source_org_id,ioObj.RoleSyncSourceUserEmail)
@@ -203,6 +203,10 @@ def main(args):
                 retval = ioObj.convertServiceRolePayload(template_user_roles)
                 payload = {}
                 payload = ioObj.convertedServiceRolePayload
+                ioObj.getAccessToken(ioObj.dest_refresh_token)
+                if (ioObj.access_token == ""):
+                    print("Unable to retrieve source access token. Server response:{}".format(ioObj.lastJSONResponse))
+                    sys.exit()
                 retval = ioObj.syncRolesToDestinationUsers()
             else:
                 print('No source object found.')
