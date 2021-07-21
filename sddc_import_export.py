@@ -207,6 +207,14 @@ def main(args):
                 if (ioObj.access_token == ""):
                     print("Unable to retrieve source access token. Server response:{}".format(ioObj.lastJSONResponse))
                     sys.exit()
+                if ioObj.import_mode == "live":
+                    if ioObj.import_mode_live_warning is True:
+                        continue_live = yes_or_no("Script is running in live mode - changes will be made to your destination SDDC. Continue in live mode?")
+                        if continue_live is False:
+                            ioObj.import_mode = "test"
+                            print("Import mode set to test")
+                        else:
+                            print("Live import will proceed")
                 retval = ioObj.syncRolesToDestinationUsers()
             else:
                 print('No source object found.')
