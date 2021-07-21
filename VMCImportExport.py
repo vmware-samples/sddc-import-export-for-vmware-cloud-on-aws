@@ -1052,7 +1052,7 @@ class VMCImportExport:
                     userId = dest_user_json['user']['userId']
                     print(f'userId for {email} = {userId}')
                     dest_user_roles = dest_user_json['serviceRoles']
-                    myURL =  self.strCSPProdURL + '/csp/gateway/am/api/v3/users/' + userId + '/orgs/' + self.source_org_id + "/roles"
+                    myURL =  self.strCSPProdURL + '/csp/gateway/am/api/v3/users/' + userId + '/orgs/' + self.dest_org_id + "/roles"
                     if self.import_mode == "live":
                         response = self.invokeVMCPATCH(myURL,json.dumps(self.convertedServiceRolePayload))
                         if response.status_code == 200:
