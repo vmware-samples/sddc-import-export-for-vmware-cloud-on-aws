@@ -1045,7 +1045,7 @@ class VMCImportExport:
             print(f'Looking up destination user {email}')
             retval = self.searchOrgUser(self.dest_org_id,email)
             if retval is False:
-                print('API error searching for ' + str(self.RoleSyncDestUserEmails))
+                print('API error searching for ' + str(email))
             else:
                 if len(self.user_search_results_json['results']) > 0:
                     dest_user_json = self.user_search_results_json['results'][0]
