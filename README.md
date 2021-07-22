@@ -400,7 +400,9 @@ Execute your Lambda function. Although it is possible to configure values in the
 ### 1.4.10. Cloud Services Platform Role Sync
 
 You can sync user roles with the rolesync option.
-*Note:* the API tokens you use must have Org Owner permissions. You can sync across orgs by using a different source and destination OrgID. Alternatively, if your sync template and destinations are in the same org, you can configure the source and destination OrgIDs to be identical.
+> **Note:** the API tokens you use must have Org Owner permissions. You can sync across orgs by using a different source and destination OrgID. Alternatively, if your sync template and destinations are in the same org, you can configure the source and destination OrgIDs to be identical.
+
+> **Known issue:** If the source user has roles assigned that do not exist in the destination, the sync will fail. The initial release of this feature does not have any logic in it to search for invalid roles. For example: a source user is assigned a role for both VMC on AWS and vRealize Automation Cloud. The destination org only has VMC on AWS activated - vRealize Automation is not activated in the destination org. The sync will fail. But the sync would succeed if the source user only had VMC on AWS roles assigned.
 
 First, configure a template account in the Cloud Services Platform, granting it all of the roles you want to synchronize.
 
