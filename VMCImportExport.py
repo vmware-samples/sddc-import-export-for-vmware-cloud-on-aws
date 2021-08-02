@@ -432,7 +432,7 @@ class VMCImportExport:
                     for item in group_expression:
                         if item["resource_type"] == "ExternalIDExpression":
                             skip_vm_expression = True
-                            print("This type of group cannot be imported as it relies on VM external ID.")
+                            print(f'CGW Group {group["display_name"]} cannot be imported as it relies on VM external ID.')
                             break
                 else:
                     continue
@@ -445,7 +445,7 @@ class VMCImportExport:
                         creategrpresp = requests.put(myURL,headers=myHeader,data=json_data)
                     print("CGW Group " + payload["display_name"] + " has been imported.")
                 else:
-                        break
+                        continue
             else:
                 print("TEST MODE - CGW Group " + payload["display_name"] + " would have been imported.")
             payload = {}
@@ -1208,7 +1208,7 @@ class VMCImportExport:
                         for item in group_expression:
                             if item["resource_type"] == "ExternalIDExpression":
                                 skip_vm_expression = True
-                                print("This type of group cannot be imported as it relies on VM external ID.")
+                                print(f'CGW Group {group["display_name"]} cannot be imported as it relies on VM external ID.')
                                 break
                     else:
                         continue
@@ -1221,7 +1221,7 @@ class VMCImportExport:
                             creategrpresp = requests.put(myURL,headers=myHeader,data=json_data)
                         print("CGW Group " + payload["display_name"] + " has been imported.")
                     else:
-                        break
+                        continue
                 else:
                         print("TEST MODE - CGW Group " + payload["display_name"] + " would have been imported.")
                 payload = {}
