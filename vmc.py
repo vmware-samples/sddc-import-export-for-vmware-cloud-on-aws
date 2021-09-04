@@ -1,0 +1,130 @@
+# VMC connection module
+################################################################################
+### Copyright 2020-2021 VMware, Inc.
+### SPDX-License-Identifier: BSD-2-Clause
+################################################################################
+import requests
+import json
+
+import datetime
+
+class JSONResponse():
+    def __init__(self, success: bool, json_body: str, last_response: str = None) -> None:
+        self.success = success
+        self.json_body = json_body
+        self.last_response = last_response
+class VMCConnection():
+    def __init__(self, refresh_token: str, org_id: str, sddc_id: str = None, ProdURL: str = 'https://vmc.vmware.com', CSPProdURL: str = 'https://console.cloud.vmware.com') -> None:
+        self.access_token = None
+        self.access_token_expiration = None
+        self.lastJSONResponse = None
+        self.refresh_token = refresh_token
+        self.ProdURL = ProdURL
+        self.CSPProdURL = CSPProdURL
+        self.org_id = org_id
+        self.sddc_id = sddc_id
+
+        self.proxy_url = None
+        self.proxy_url_short = None
+
+        self.getAccessToken()
+
+        if sddc_id is None:
+            print('No SDDC ID, call getNSXProxy before continuing')
+        else:
+            self.getNSXTproxy()
+
+    def getAccessToken(self,myRefreshToken: str = None):
+        """ Gets the Access Token using the Refresh Token """
+        if myRefreshToken is None:
+            myRefreshToken = self.refresh_token
+
+        if self.org_id is None:
+            print('Missing org ID')
+            return None
+
+        params = {'api_token': myRefreshToken}
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        response = requests.post(f'{self.CSPProdURL}/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
+        if response.status_code != 200:
+            print (f'API Call Status {response.status_code}, text:{response.text}')
+            return None
+
+        jsonResponse = response.json()
+
+        try:
+            self.access_token = jsonResponse['access_token']
+            expires_in = jsonResponse['expires_in']
+            expirestime = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
+            self.access_token_expiration = expirestime
+            print(f'Token expires at {expirestime}')
+        except:
+            self.access_token = None
+            self.access_token_expiration = None
+        return self.access_token
+
+    def getNSXTproxy(self):
+            """ Gets the Reverse Proxy URL """
+            if self.access_token is None:
+                print('No access token, unable to continue')
+                return None
+
+            if self.sddc_id is None:
+                print('No SDDC ID, unable to continue')
+                return None
+
+            myHeader = {'csp-auth-token': self.access_token}
+            myURL = f'{self.ProdURL}/vmc/api/orgs/{self.org_id}/sddcs/{self.sddc_id}'
+            response = requests.get(myURL, headers=myHeader)
+            if response.status_code != 200:
+                print (f'API Call Status {response.status_code}, text:{response.text}')
+                return None
+            json_response = response.json()
+            try:
+                self.proxy_url = json_response['resource_config']['nsx_api_public_endpoint_url']
+                self.proxy_url_short = self.proxy_url.replace('/sks-nsxt-manager','')
+            except:
+                self.proxy_url = None
+                print("Unable to find NSX-T proxy URL in response. JSON:")
+                print(json_response)
+            return self.proxy_url
+
+    def check_access_token_expiration(self) -> None:
+        """Retrieve a new access token if it is near expiration"""
+        time_to_expire = self.access_token_expiration - datetime.datetime.now()
+        if time_to_expire.total_seconds() <= 100:
+            print('Access token expired, attempting to refresh...')
+            self.getAccessToken()
+        else:
+            print('Token Expires:', time_to_expire.total_seconds())
+
+    def invokeVMCGET(self,url: str, header: str = None) -> requests.Response:
+            """Invokes a VMC On AWS GET request"""
+            self.check_access_token_expiration()
+            myHeader = {'csp-auth-token': self.access_token}
+            try:
+                response = requests.get(url,headers=myHeader)
+                if response.status_code != 200:
+                    self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+                return response
+            except Exception as e:
+                    self.lastJSONResponse = e
+                    return None
+
+class VMCSDDC():
+    def __init__(self, refresh_token: str, org_id: str, sddc_id: str) -> None:
+        self.org_id = org_id
+        self.sddc_id = sddc_id
+        self.vmcconn = VMCConnection(refresh_token,org_id, sddc_id);
+
+    def getSDDCCGWRule(self, rule_id: str) -> JSONResponse:
+        """Exports the CGW firewall rules to a JSON file"""
+        myURL = (self.vmcconn.proxy_url + f'/policy/api/v1/infra/domains/cgw/gateway-policies/default/rules/{rule_id}')
+        response = self.vmcconn.invokeVMCGET(myURL)
+        if response is None or response.status_code != 200:
+            return JSONResponse(False,None, self.vmcconn.lastJSONResponse)
+
+        json_response = response.json()
+        #print(json_response)
+        return JSONResponse(True, json_response)
+
