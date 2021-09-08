@@ -105,7 +105,7 @@ mgw_import_filename = mgw.json
 # Python regex match on MGW group display name, pipe-delimited. See README for examples.
 mgw_groups_import_exclude_list =
 # Python regex match on MGW rule display name, pipe-delimited. See README for examples.
-mgw_import_exclude_list =
+mgw_import_exclude_list = CloudDR-SystemRule-CloudDRTovCenter|CloudDR-SystemRule-ProxyVMTovCenter
 
 # Import the compute gateway networks?
 network_import  = True
