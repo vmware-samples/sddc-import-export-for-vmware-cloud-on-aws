@@ -95,8 +95,6 @@ class VMCConnection():
         if time_to_expire.total_seconds() <= 100:
             print('Access token expired, attempting to refresh...')
             self.getAccessToken()
-        else:
-            print('Token Expires:', time_to_expire.total_seconds())
 
     def invokeVMCGET(self,url: str, header: str = None) -> requests.Response:
             """Invokes a VMC On AWS GET request"""
@@ -125,6 +123,5 @@ class VMCSDDC():
             return JSONResponse(False,None, self.vmcconn.lastJSONResponse)
 
         json_response = response.json()
-        #print(json_response)
         return JSONResponse(True, json_response)
 
