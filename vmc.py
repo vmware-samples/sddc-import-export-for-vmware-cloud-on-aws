@@ -9,38 +9,40 @@ import json
 import datetime
 
 class JSONResponse():
+    """A REST API response object """
     def __init__(self, success: bool, json_body: str, last_response: str = None) -> None:
         self.success = success
         self.json_body = json_body
         self.last_response = last_response
+
 class VMCConnection():
+    """Connection to VMware Cloud on AWS"""
     def __init__(self, refresh_token: str, org_id: str, sddc_id: str = None, ProdURL: str = 'https://vmc.vmware.com', CSPProdURL: str = 'https://console.cloud.vmware.com') -> None:
         self.access_token = None
         self.access_token_expiration = None
-        self.lastJSONResponse = None
-        self.refresh_token = refresh_token
-        self.ProdURL = ProdURL
         self.CSPProdURL = CSPProdURL
+        self.lastJSONResponse = None
         self.org_id = org_id
-        self.sddc_id = sddc_id
-
+        self.ProdURL = ProdURL
         self.proxy_url = None
         self.proxy_url_short = None
+        self.refresh_token = refresh_token
+        self.sddc_id = sddc_id
 
         self.getAccessToken()
 
         if sddc_id is None:
-            print('No SDDC ID, call getNSXProxy before continuing')
+            print('No SDDC ID found, call getNSXTproxy before continuing')
         else:
             self.getNSXTproxy()
 
-    def getAccessToken(self,myRefreshToken: str = None):
+    def getAccessToken(self,myRefreshToken: str = None) -> str:
         """ Gets the Access Token using the Refresh Token """
         if myRefreshToken is None:
             myRefreshToken = self.refresh_token
 
         if self.org_id is None:
-            print('Missing org ID')
+            print('No org ID found.')
             return None
 
         params = {'api_token': myRefreshToken}
@@ -63,7 +65,7 @@ class VMCConnection():
             self.access_token_expiration = None
         return self.access_token
 
-    def getNSXTproxy(self):
+    def getNSXTproxy(self) -> str:
             """ Gets the Reverse Proxy URL """
             if self.access_token is None:
                 print('No access token, unable to continue')
@@ -116,8 +118,18 @@ class VMCSDDC():
         self.vmcconn = VMCConnection(refresh_token,org_id, sddc_id);
 
     def getSDDCCGWRule(self, rule_id: str) -> JSONResponse:
-        """Exports the CGW firewall rules to a JSON file"""
+        """Retrieve a single CGW rule"""
         myURL = (self.vmcconn.proxy_url + f'/policy/api/v1/infra/domains/cgw/gateway-policies/default/rules/{rule_id}')
+        response = self.vmcconn.invokeVMCGET(myURL)
+        if response is None or response.status_code != 200:
+            return JSONResponse(False,None, self.vmcconn.lastJSONResponse)
+
+        json_response = response.json()
+        return JSONResponse(True, json_response)
+
+    def getSDDCCGWRules(self) -> JSONResponse:
+        """Retrieve all CGW firewall rules"""
+        myURL = (self.vmcconn.proxy_url + f'/policy/api/v1/infra/domains/cgw/gateway-policies/default/rules')
         response = self.vmcconn.invokeVMCGET(myURL)
         if response is None or response.status_code != 200:
             return JSONResponse(False,None, self.vmcconn.lastJSONResponse)
