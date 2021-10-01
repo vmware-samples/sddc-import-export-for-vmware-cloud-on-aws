@@ -72,6 +72,9 @@ On Windows, use
 ```bash
 python -m pip install -r requirements.txt
 ```
+If you get pip installation errors complaining about being unable to install `git+https://github.com/vmware/vsphere-automation-sdk-python.git@v7.0.2.0`, and you don't need to use the vCenter folder export feature, you can do the following: 
+- Remove line 10 in requirements.txt `git+https://github.com/vmware/vsphere-automation-sdk-python.git@v7.0.2.0`
+- Comment out line 54 in sddc_import_export.py `import vcenter`
 
 ### 1.3.4. Update vmc.ini
 
