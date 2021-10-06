@@ -82,7 +82,9 @@ def main(args):
                                     "python sddc_import_export.py -o import\n\n"
                                     "Import an SDDC from a zipfile:\n"
                                     "python sddc_import_export.py -o import -i json/2020-12-15_10-33-43_json-export.zip\n\n")
-    ap.add_argument("-o","--operation", required=True, choices=['import-nsx','export-nsx','import','export','export-import','check-vmc-ini','export-vcenter','import-vcenter','rolesync'], help="SDDC-to-SDDC operations: import, export, or export and then immediately import. check-vmc-ini displays the currently configured Org and SDDC for import and export operations. export-nsx to export an on-prem NSX config, then import-nsx to import it to VMC. export-vcenter and import-vcenter to export and import vCenter configs.")
+    ap.add_argument("-o","--operation", required=True, choices=['import-nsx','export-nsx','import','export','export-import','check-vmc-ini','export-vcenter','import-vcenter','rolesync','testbed'], help="SDDC-to-SDDC operations: import, export, or export and then immediately import. check-vmc-ini displays the currently configured Org and SDDC for import and export operations. export-nsx to export an on-prem NSX config, then import-nsx to import it to VMC. export-vcenter and import-vcenter to export and import vCenter configs.")
+    ap.add_argument("-t", "--test-name", required=False, nargs='+', choices=['create-cgw-groups','delete-cgw-groups'])
+    ap.add_argument("-n", "--num-objects", required=False, type=int, default=1000)
     ap.add_argument("-et","--export-type", required=False, choices=['os','s3'],help="os for a regular export, s3 for export to S3 bucket")
     ap.add_argument("-ef","--export-folder",required=False,help="Export folder location")
     import_group = ap.add_mutually_exclusive_group()
@@ -227,7 +229,63 @@ def main(args):
             print('Exporting folder paths from source vCenter...')
             srcdc.export_folder_paths(ioObj.export_path / ioObj.vcenter_folders_filename)
             print('Export complete.')
-    
+
+    if intent_name == "testbed":
+        no_intent_found = False
+        if args.test_name:
+            test_name = args.test_name
+        else:
+            print('test-name argument is required')
+            sys.exit()
+
+        print('Testbed mode:',ioObj.import_mode)
+
+        ioObj.getAccessToken(ioObj.dest_refresh_token)
+        if (ioObj.access_token == ""):
+            print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
+            sys.exit()
+
+        ioObj.getNSXTproxy(ioObj.dest_org_id,ioObj.dest_sddc_id)
+        if (ioObj.proxy_url == ""):
+            print("Unable to retrieve proxy. Server response:{}".format(ioObj.lastJSONResponse))
+            sys.exit()
+
+        retval = ioObj.loadDestOrgData()
+        if retval == False:
+            print("Unable to load Dest Org Data. Server response:{}".format(ioObj.lastJSONResponse))
+            sys.exit()
+
+        retval = ioObj.loadDestSDDCData()
+        if retval == False:
+            print("Unable to load Dest SDDC Data. Server response:{}".format(ioObj.lastJSONResponse))
+            sys.exit()
+
+        if ioObj.dest_sddc_state != 'READY':
+            print("Unable to import, expected SDDC",ioObj.dest_sddc_name,"state READY, found state", ioObj.dest_sddc_state)
+            sys.exit()
+
+        print(f'Managing testbed objects for {ioObj.dest_org_display_name} ({ioObj.dest_org_id}), SDDC {ioObj.dest_sddc_name} ({ioObj.dest_sddc_id}), SDDC version {ioObj.dest_sddc_version}')
+        for t in test_name:
+            if t == 'create-cgw-groups':
+                if args.num_objects < 1:
+                    print('num-objects argument must be a positive integer.')
+                else:
+                    print(f'Generating a testbed of {args.num_objects} CGW groups')
+                    for i in range(0,args.num_objects):
+                        grp_name = f'test-group-{i:04}'
+                        retval = ioObj.createSDDCCGWGroup(grp_name)
+
+            if t == 'delete-cgw-groups':
+                if args.num_objects < 1:
+                    print('num-objects argument must be a positive integer.')
+                else:
+                    print(f'Deleting testbed of {args.num_objects} CGW groups')
+                    for i in range(0,args.num_objects):
+                        grp_name = f'test-group-{i:04}'
+                        retval = ioObj.deleteSDDCCGWGroup(grp_name)
+
+
+
     if intent_name == "import-vcenter":
         no_intent_found = False
         if ioObj.import_vcenter_folders:

@@ -1107,6 +1107,40 @@ class VMCImportExport:
                 self.lastJSONResponse = e
                 return None
 
+    def createSDDCCGWGroup(self, group_name: str):
+        """Creates a new CGW Group"""
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups/" + group_name
+
+        json_data = {"display_name":group_name, "id":group_name }
+        if self.import_mode == "live":
+            group_resp = requests.put(myURL,headers=myHeader,data=json.dumps(json_data))
+            if group_resp.status_code == 200:
+                print(f'Group {group_name} has been created')
+            else:
+                print(f'API Call Status {group_resp.status_code}, text:{group_resp.text}')
+                print(json_data)
+        else:
+            print(json_data)
+            print(f'TEST MODE: would have added CGW group {group_name}')
+            return True
+
+    def deleteSDDCCGWGroup(self, group_name: str):
+        """Creates a CGW Group"""
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups/" + group_name
+
+        #json_data = {"display_name":group_name, "id":group_name }
+        if self.import_mode == "live":
+            group_resp = requests.delete(myURL,headers=myHeader)
+            if group_resp.status_code == 200:
+                print(f'Group {group_name} has been deleted')
+            else:
+                print(f'API Call Status {group_resp.status_code}, text:{group_resp.text}')
+        else:
+            print(f'TEST MODE: would have deleted CGW group {group_name}')
+            return True
+
     def exportSDDCCGWGroups(self):
             """Exports the CGW network segments to a JSON file"""
             myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups"
