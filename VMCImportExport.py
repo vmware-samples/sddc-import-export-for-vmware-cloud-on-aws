@@ -71,7 +71,7 @@ class VMCImportExport:
         self.RoleSyncSourceUserEmail = ""
         self.RoleSyncDestUserEmails = {}
         self.ConfigLoader()
-    
+
     def ConfigLoader(self):
         """Load all configuration variables from config.ini"""
         config = configparser.ConfigParser()
@@ -231,7 +231,7 @@ class VMCImportExport:
                 print('Error deleting',filePath)
                 retval = False
         return retval
-    
+
     def zipJSONfiles(self):
         """Creates a zipfile of exported JSON files"""
         files = glob.glob(self.export_folder + '/*.json')
@@ -258,7 +258,7 @@ class VMCImportExport:
                 print(sourceZipPath,'not found.')
                 return False
 
-            # This does not obey the import_folder    
+            # This does not obey the import_folder
             with ZipFile(sourceZipPath,mode = 'r') as zip:
                 zip.extractall(os.path.dirname(sourceZipPath))
             return True
@@ -398,7 +398,6 @@ class VMCImportExport:
                 else:
                     print("TEST MODE - Service",service["display_name"],"would have been imported.")
 
-    
     def importOnPremGroup(self):
         """Import all CGW groups from a JSON file"""
         fname = self.import_path / self.cgw_groups_filename
@@ -420,7 +419,7 @@ class VMCImportExport:
                     skip_group = True
                     break
             if skip_group is True:
-                continue   
+                continue
             payload["id"]=group["id"]
             payload["resource_type"]=group["resource_type"]
             payload["display_name"]=group["display_name"]
@@ -450,7 +449,7 @@ class VMCImportExport:
                 print("TEST MODE - CGW Group " + payload["display_name"] + " would have been imported.")
             payload = {}
         return True
-    
+
     def importOnPremDFWRule(self):
         """Import all DFW Rules from a JSON file"""
         fname = self.import_path / self.dfw_import_filename
@@ -522,9 +521,8 @@ class VMCImportExport:
                             print(f'API Call Status {response.status_code}, text:{response.text}')
                     else:
                         print("TEST MODE - DFW rule " + commEnt["display_name"] + " would have been imported.")
-                
         return True
-    
+
     def exportSDDCCGWnetworks(self):
         """Exports the CGW network segments to a JSON file"""
         myURL = (self.proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments")
@@ -673,7 +671,6 @@ class VMCImportExport:
                         print(f'API Call Status {response.status_code}, text:{response.text}')
                 else:
                     print("TEST MODE - DFW rule " + commEnt["display_name"] + " would have been imported.")
-                
         return True
 
     def exportServiceAccess(self):
@@ -685,7 +682,7 @@ class VMCImportExport:
         if response is None or response.status_code != 200:
             return False
 
-        json_response = response.json()       
+        json_response = response.json()
         linked_vpcs = json_response["results"]
         num_vpcs = len(linked_vpcs)
         if num_vpcs != 1:
@@ -702,7 +699,7 @@ class VMCImportExport:
             response = self.invokeVMCGET(myURL)
             if response is None or response.status_code != 200:
                 return False
-                
+
             json_response = response.json()
             connected_services = json_response['results']
             for svc in connected_services:
@@ -750,14 +747,14 @@ class VMCImportExport:
             print('DPD Profile export failure: ', self.lastJSONResponse)
         else:
             print('DPD Profiles exported.')
-        
+
         retval = self.exportVPNTunnelProfiles()
         if retval is False:
             successval = False
             print('Tunnel Profile export failure: ', self.lastJSONResponse)
         else:
             print('Tunnel Profiles exported.')
-        
+
         retval = self.exportVPNBGPNeighbors()
         if retval is False:
             successval = False
@@ -770,21 +767,21 @@ class VMCImportExport:
             successval = False
             print('VPN Local BGP export failure: ', self.lastJSONResponse)
         else:
-            print('VPN Local BGP exported.')        
+            print('VPN Local BGP exported.')
 
         retval = self.exportVPNl2config()
         if retval is False:
             successval = False
             print('L2 VPN export failure: ', self.lastJSONResponse)
         else:
-            print('L2 VPN exported.')  
+            print('L2 VPN exported.')
 
         retval = self.exportVPNl3config()
         if retval is False:
             successval = False
             print('L3 VPN export failure: ', self.lastJSONResponse)
         else:
-            print('L3 VPN exported.')        
+            print('L3 VPN exported.')
 
         return successval
 
@@ -852,7 +849,7 @@ class VMCImportExport:
         with open(fname, 'w') as outfile:
             json.dump(bgp_neighbors, outfile,indent=4)
         return True
-    
+
     def getVPNl3sensitivedata(self,l3vpnid):
         """ Retrieve sensitive data such as IPSEC preshared keys from an L3VPN configuration"""
         myHeader = {'csp-auth-token': self.access_token}
@@ -867,7 +864,7 @@ class VMCImportExport:
                 return sensitive_l3vpn
         except:
             self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
-            return ""            
+            return ""
 
     def exportVPNl2config(self):
         myURL = (self.proxy_url_short + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions")
@@ -880,7 +877,7 @@ class VMCImportExport:
         fname = self.export_path / self.vpn_l2_filename
         with open(fname, 'w') as outfile:
             json.dump(vpn_l2_config, outfile,indent=4)
-        return True 
+        return True
 
     def exportVPNl3config(self):
         myURL = (self.proxy_url_short + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions")
@@ -900,8 +897,8 @@ class VMCImportExport:
         fname = self.export_path / self.vpn_l3_filename
         with open(fname, 'w') as outfile:
             json.dump(vpn_l3_config, outfile,indent=4)
-        return True 
-    
+        return True
+
     def importCGWNetworks(self):
         """Imports CGW network semgements from a JSON file"""
         fname = self.import_path / self.network_import_filename
@@ -1108,7 +1105,7 @@ class VMCImportExport:
             return response
         except Exception as e:
                 self.lastJSONResponse = e
-                return None        
+                return None
 
     def exportSDDCCGWGroups(self):
             """Exports the CGW network segments to a JSON file"""
@@ -1172,7 +1169,7 @@ class VMCImportExport:
                     print("TEST MODE - Firewall Rule " + payload["display_name"] + " would have been imported." )
                 payload = {}
         return True
-    
+
 
     def importSDDCCGWGroup(self):
         """Import all CGW groups from a JSON file"""
@@ -1229,7 +1226,7 @@ class VMCImportExport:
 
     def importServiceAccess(self):
         """Imports SDDC Service Access config from a JSON file"""
-        
+
         # First, retrieve the linked VPC ID
         myHeader = {'csp-auth-token': self.access_token}
         myURL = (self.proxy_url + '/cloud-service/api/v1/infra/linked-vpcs')
@@ -1242,7 +1239,7 @@ class VMCImportExport:
             self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
             return False
 
-        json_response = response.json()       
+        json_response = response.json()
         linked_vpcs = json_response["results"]
         num_vpcs = len(linked_vpcs)
         if num_vpcs != 1:
@@ -1250,7 +1247,7 @@ class VMCImportExport:
             return False
         else:
             linked_vpc = linked_vpcs[0]
-        
+
         linked_vpc_id = linked_vpc['linked_vpc_id']
 
         # Looking for *-service_access.json
@@ -1268,7 +1265,7 @@ class VMCImportExport:
                     if self.sync_mode is True:
                         svcresp = requests.patch(myURL,headers=myHeader,data=json_data)
                     else:
-                        svcresp = requests.put(myURL,headers=myHeader,data=json_data)                        
+                        svcresp = requests.put(myURL,headers=myHeader,data=json_data)
                     if svcresp.status_code == 200:
                         print("Service Access " + payload["name"] + " has been imported.")
                     else:
@@ -1279,7 +1276,7 @@ class VMCImportExport:
 
         return True
 
-    def importVPNLocalBGP(self): 
+    def importVPNLocalBGP(self):
         fname = self.import_path / self.vpn_local_bgp_filename
         with open(fname) as filehandle:
             local_bgp = json.load(filehandle)
@@ -1297,7 +1294,7 @@ class VMCImportExport:
                     print(f'API Call Status {bgppresp.status_code}, text:{bgppresp.text}')
                     print(json_data)
             else:
-                print("TEST MODE - Local BGP config  would have been imported.")                                         
+                print("TEST MODE - Local BGP config  would have been imported.")
 
 
     def importVPNBGPNeighbors(self):
@@ -1312,13 +1309,13 @@ class VMCImportExport:
                         payload["remote_as_num"]=bgpentry["remote_as_num"]
                         if "route_filtering" in bgpentry:
                             payload["route_filtering"]=bgpentry["route_filtering"]
-                        if "keep_alive_time" in bgpentry:                            
+                        if "keep_alive_time" in bgpentry:
                             payload["keep_alive_time"]=bgpentry["keep_alive_time"]
-                        if "hold_down_time" in bgpentry:                            
+                        if "hold_down_time" in bgpentry:
                             payload["hold_down_time"]=bgpentry["hold_down_time"]
                         if "allow_as_in" in bgpentry:
                             payload["allow_as_in"]=bgpentry["allow_as_in"]
-                        if "maximum_hop_limit" in bgpentry:                        
+                        if "maximum_hop_limit" in bgpentry:
                             payload["maximum_hop_limit"]=bgpentry["maximum_hop_limit"]
                         if "resource_type" in bgpentry:
                             payload["resource_type"]=bgpentry["resource_type"]
@@ -1342,9 +1339,9 @@ class VMCImportExport:
                                 print(f'API Call Status {bgppresp.status_code}, text:{bgppresp.text}')
                                 print(json_data)
                         else:
-                            print("TEST MODE - BGP Neighbor " +  payload["display_name"] + " created by " + bgpentry["_create_user"] + " would have been imported.")                                         
+                            print("TEST MODE - BGP Neighbor " +  payload["display_name"] + " created by " + bgpentry["_create_user"] + " would have been imported.")
 
-        
+
     def importVPNTunnelProfiles(self):
         fname = self.import_path / self.vpn_tunnel_filename
         with open(fname) as filehandle:
@@ -1360,7 +1357,7 @@ class VMCImportExport:
                     payload["encryption_algorithms"]=tunp["encryption_algorithms"]
                     payload["sa_life_time"]=tunp["sa_life_time"]
                     payload["resource_type"]=tunp["resource_type"]
-                    payload["display_name"]=tunp["display_name"]       
+                    payload["display_name"]=tunp["display_name"]
                     if self.import_mode == 'live':
                         myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
                         myURL = self.proxy_url + "/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/" + tunp["id"]
@@ -1375,7 +1372,7 @@ class VMCImportExport:
                             print(f'API Call Status {tunpresp.status_code}, text:{tunpresp.text}')
                             print(json_data)
                     else:
-                        print("TEST MODE - Tunnel Profile " +  payload["display_name"] + " created by " + tunp["_create_user"] + " would have been imported.")                                         
+                        print("TEST MODE - Tunnel Profile " +  payload["display_name"] + " created by " + tunp["_create_user"] + " would have been imported.")
 
     def importVPNl2config(self):
         fname = self.import_path / self.vpn_l2_filename
@@ -1390,7 +1387,7 @@ class VMCImportExport:
                     if self.vpn_disable_on_import is True:
                         print('vpn_disable_on_import set to True, disabling VPN')
                         payload["enabled"]= False
-                    else:                    
+                    else:
                         payload["enabled"]=l2vpn["enabled"]
                     payload["tunnel_encapsulation"]=l2vpn["tunnel_encapsulation"]
                     payload["resource_type"]=l2vpn["resource_type"]
@@ -1424,7 +1421,7 @@ class VMCImportExport:
                 payload = {}
 
                 if l3vpn["_create_user"]!= "admin" and l3vpn["_create_user"]!="admin;admin" and l3vpn["_create_user"]!="system":
-                    payload["id"]=l3vpn["id"]                    
+                    payload["id"]=l3vpn["id"]
                     if l3vpn.get("tunnel_interfaces"):
                         tunint = []
                         ipsubnets = []
@@ -1490,16 +1487,16 @@ class VMCImportExport:
                     if l3vpn.get("peer_address"):
                         payload["peer_address"]=l3vpn["peer_address"]
                     if l3vpn.get("peer_id"):
-                        payload["peer_id"]=l3vpn["peer_id"]	                   
+                        payload["peer_id"]=l3vpn["peer_id"]
                     if l3vpn.get("psk"):
-                        payload["psk"]=l3vpn["psk"]                        
+                        payload["psk"]=l3vpn["psk"]
                     payload["resource_type"]=l3vpn["resource_type"]
                     if l3vpn.get("tunnel_profile_path"):
                         payload["tunnel_profile_path"]=l3vpn["tunnel_profile_path"]
                     if l3vpn.get("ike_profile_path"):
                         payload["ike_profile_path"]=l3vpn["ike_profile_path"]
                     if l3vpn.get("dpd_profile_path"):
-                        payload["dpd_profile_path"]=l3vpn["dpd_profile_path"]                            
+                        payload["dpd_profile_path"]=l3vpn["dpd_profile_path"]
                     json_data = json.dumps(payload)
                     if self.import_mode == 'live':
                         myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
@@ -1514,7 +1511,7 @@ class VMCImportExport:
                             print(f'API Call Status {l3vpnresp.status_code}, text:{l3vpnresp.text}')
                             print(json_data)
                     else:
-                        print("TEST MODE - L3VPN " + l3vpn["id"] + " created by " + l3vpn["_create_user"] + " would have been imported.")                    
+                        print("TEST MODE - L3VPN " + l3vpn["id"] + " created by " + l3vpn["_create_user"] + " would have been imported.")
 
     def importVPNIKEProfiles(self):
         """Import all"""
@@ -1599,7 +1596,7 @@ class VMCImportExport:
                     print("TEST MODE - Firewall Rule " + payload["display_name"] + " would have been imported.")
                 payload = {}
         return True
-    
+
     def importSDDCMGWGroup(self):
         """Import all MGW groups from a JSON file"""
         fname = self.import_path / self.mgw_groups_filename
@@ -1609,7 +1606,7 @@ class VMCImportExport:
         except:
             print('Import failed - unable to open',fname)
             return False
-        
+
         payload = {}
         for group in groups:
             skip_group = False
@@ -1661,11 +1658,11 @@ class VMCImportExport:
         fname = self.import_path / self.nat_import_filename
         with open(fname) as filehandle:
             nat = json.load(filehandle)
-        
+
         fname = self.import_path / self.public_ip_old_new_filename
         with open(fname) as filehandle:
             public_ip_old_new = json.load(filehandle)
-        
+
         for n in nat:
             json_data = {}
             json_data["id"] = n['id']
@@ -1704,7 +1701,7 @@ class VMCImportExport:
                     print("unknown NAT rule type.")
             else:
                 print("TEST MODE - NAT Rule " + n['display_name'] + " would have been imported.")
-    
+
     def exportSDDCListPublicIP(self):
         """Exports the Public IPs to a JSON file"""
         myURL = (self.proxy_url + "/cloud-service/api/v1/infra/public-ips")
@@ -1719,7 +1716,7 @@ class VMCImportExport:
         with open(fname, 'w') as outfile:
             json.dump(sddc_dict, outfile,indent=4)
         return True
-    
+
     def importSDDCPublicIPs(self):
         """Import all Public IP addresses from a JSON file"""
         myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token}
@@ -1747,7 +1744,7 @@ class VMCImportExport:
                         new_ip =json_response['ip']
                         old_ip =list(n.keys())[0]
                         aDict[old_ip] = new_ip
-                        print("Previous IP " + old_ip + " has been imported and remapped to " + new_ip + ".")            
+                        print("Previous IP " + old_ip + " has been imported and remapped to " + new_ip + ".")
                     else:
                         print("Error: no IP found in JSON:", json_response)
                         new_ip = list(n.keys())[0]
@@ -1777,7 +1774,7 @@ class VMCImportExport:
            print('Tunnel profile import failure: ', self.lastJSONResponse)
         else:
            print('Tunnel profiles imported.')
-       
+
         print("Beginning BGP Neighbors...")
         retval = self.importVPNBGPNeighbors()
         if retval is False:
@@ -1793,7 +1790,7 @@ class VMCImportExport:
             print('Local BGP import failure: ',self.lastJSONResponse )
         else:
             print('Local BGP configuration imported.')
-            
+
         print("Beginning L3VPN...")
         retval = self.importVPNl3config()
         if retval is False:
@@ -1811,7 +1808,7 @@ class VMCImportExport:
             print('L2VPN configurations imported.')
 
         return successval
-        
+
     def getAccessToken(self,myRefreshToken):
         """ Gets the Access Token using the Refresh Token """
         params = {'api_token': myRefreshToken}
@@ -1837,7 +1834,7 @@ class VMCImportExport:
             self.proxy_url = ""
             print("Unable to get NSX-T proxy URL. API response:")
             print(json_response)
-        return self.proxy_url        
+        return self.proxy_url
 
     def loadConfigFlag(self,config,section,key):
         """Load a True/False flag from the config file"""
@@ -1849,7 +1846,7 @@ class VMCImportExport:
                 return False
         except:
             return None
-    
+
         return None
 
     def loadConfigRegex(self,config,section,key,delim):
@@ -1862,7 +1859,7 @@ class VMCImportExport:
                 expressionList = expressions.split(delim)
         except:
             expressionList = []
-        
+
         return expressionList
 
     def loadConfigFilename(self,config,section,key):
@@ -1878,7 +1875,7 @@ class VMCImportExport:
             elif (key == 'mgw_export_filename'):
                 return 'mgw.json'
             elif (key == 'mgw_import_filename'):
-                return 'mgw.json'        
+                return 'mgw.json'
             elif (key == 'network_export_filename'):
                 return 'cgw-network.json'
             elif (key == 'network_import_filename'):
@@ -1902,7 +1899,7 @@ class VMCImportExport:
             elif (key == 'vpn_dpd_filename'):
                 return 'vpn-dpd.json'
             elif (key == 'vpn_tunnel_filename'):
-                return 'vpn-tunnel.json'                
+                return 'vpn-tunnel.json'
             elif (key == 'vpn_bgp_filename'):
                 return 'vpn-bgp.json'
             elif (key == 'vpn_l3_filename'):
