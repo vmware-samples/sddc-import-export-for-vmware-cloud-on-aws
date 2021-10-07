@@ -275,7 +275,7 @@ def main(args):
                 else:
                     print(f'Generating a testbed of {args.num_objects} CGW groups')
                     for i in range(args.start_num,args.num_objects+args.start_num):
-                        grp_name = f'test-group-{i:04}'
+                        grp_name = f'cgw-test-group-{i:04}'
                         print(grp_name)
                         retval = ioObj.createSDDCCGWGroup(grp_name)
 
@@ -287,7 +287,7 @@ def main(args):
                 else:
                     print(f'Deleting testbed of {args.num_objects} CGW groups')
                     for i in range(args.start_num,args.num_objects+args.start_num):
-                        grp_name = f'test-group-{i:04}'
+                        grp_name = f'cgw-test-group-{i:04}'
                         retval = ioObj.deleteSDDCCGWGroup(grp_name)
 
 
