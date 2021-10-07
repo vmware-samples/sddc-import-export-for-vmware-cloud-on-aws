@@ -85,6 +85,7 @@ def main(args):
     ap.add_argument("-o","--operation", required=True, choices=['import-nsx','export-nsx','import','export','export-import','check-vmc-ini','export-vcenter','import-vcenter','rolesync','testbed'], help="SDDC-to-SDDC operations: import, export, or export and then immediately import. check-vmc-ini displays the currently configured Org and SDDC for import and export operations. export-nsx to export an on-prem NSX config, then import-nsx to import it to VMC. export-vcenter and import-vcenter to export and import vCenter configs. testbed to create and destroy large numbers of objects to test API limits")
     ap.add_argument("-t", "--test-name", required=False, nargs='+', choices=['create-cgw-groups','delete-cgw-groups'])
     ap.add_argument("-n", "--num-objects", required=False, type=int, default=1000)
+    ap.add_argument("-sn", "--start-num", required=False, type=int, default=0)
     ap.add_argument("-et","--export-type", required=False, choices=['os','s3'],help="os for a regular export, s3 for export to S3 bucket")
     ap.add_argument("-ef","--export-folder",required=False,help="Export folder location")
     import_group = ap.add_mutually_exclusive_group()
@@ -269,18 +270,23 @@ def main(args):
             if t == 'create-cgw-groups':
                 if args.num_objects < 1:
                     print('num-objects argument must be a positive integer.')
+                elif args.start_num < 0:
+                    print('start-num argument must be a positive integer or 0')
                 else:
                     print(f'Generating a testbed of {args.num_objects} CGW groups')
-                    for i in range(0,args.num_objects):
+                    for i in range(args.start_num,args.num_objects+args.start_num):
                         grp_name = f'test-group-{i:04}'
+                        print(grp_name)
                         retval = ioObj.createSDDCCGWGroup(grp_name)
 
             if t == 'delete-cgw-groups':
                 if args.num_objects < 1:
                     print('num-objects argument must be a positive integer.')
+                elif args.start_num < 0:
+                    print('start-num argument must be a positive integer or 0')
                 else:
                     print(f'Deleting testbed of {args.num_objects} CGW groups')
-                    for i in range(0,args.num_objects):
+                    for i in range(args.start_num,args.num_objects+args.start_num):
                         grp_name = f'test-group-{i:04}'
                         retval = ioObj.deleteSDDCCGWGroup(grp_name)
 

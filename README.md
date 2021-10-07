@@ -461,3 +461,12 @@ This will delete 1,500 test Compute Gateway groups, starting with `test-group-00
 ```bash
 python sddc_import_export.py -o testbed --test-name delete-cgw-groups --num-objects 1500
 ```
+You can also pass the --start-num argument. The default is 0. 
+This will create 1,500 test Compute Gateway groups, starting with test-group-0050
+```bash
+python sddc_import_export.py -o testbed --test-name create-cgw-groups --num-objects 1500 --start-num 50
+```
+
+This will delete 1,500 test Compute Gateway groups, starting with test-group-0050
+```bash
+python sddc_import_export.py -o testbed --test-name delete-cgw-groups --num-objects 1500 --start-num 50
