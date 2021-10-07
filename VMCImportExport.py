@@ -1150,6 +1150,7 @@ class VMCImportExport:
             json_response = response.json()
             cgw_groups = json_response['results']
 
+            # After grabbing an intial set of results, check for presence of a cursor
             while "cursor" in json_response:
                 myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups?cursor=" + json_response['cursor']
                 print(myURL)

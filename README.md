@@ -29,6 +29,7 @@
         - [1.4.8. Import from zip archive](#148-import-from-zip-archive)
         - [1.4.9. Running S3 export as a Lambda function](#149-running-s3-export-as-a-lambda-function)
         - [1.4.10. Cloud Services Platform Role Sync](#1410-cloud-services-platform-role-sync)
+        - [1.4.11. Testbed commands](#1411-testbed-commands)
 
 <!-- /TOC -->
 ## 1.2. Overview
@@ -443,4 +444,20 @@ Looking up destination user user1@vmware.com
 Role sync success: template@vmware.com->user1@vmware.com
 Looking up destination user user2@vmware.com
 Role sync success: template@vmware.com->user2@vmware.com
+```
+
+### 1.4.11. Testbed commands
+
+The testbed command lets you create a number of test objects. This is useful when experimenting with API limits in VMC on AWS.
+
+The testbed command always operates on the destination SDDC. It obeys the `import_mode` setting in `config.ini`.
+
+This will create 1,500 test Compute Gateway groups, starting with `test-group-0000`. 
+```bash
+python sddc_import_export.py -o testbed --test-name create-cgw-groups --num-objects 1500
+```
+
+This will delete 1,500 test Compute Gateway groups, starting with `test-group-0000`
+```bash
+python sddc_import_export.py -o testbed --test-name delete-cgw-groups --num-objects 1500
 ```
