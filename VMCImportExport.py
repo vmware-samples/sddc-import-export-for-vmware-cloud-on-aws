@@ -1149,9 +1149,20 @@ class VMCImportExport:
                 return False
             json_response = response.json()
             cgw_groups = json_response['results']
+
+            while "cursor" in json_response:
+                myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups?cursor=" + json_response['cursor']
+                print(myURL)
+                response = self.invokeVMCGET(myURL)
+                if response is None or response.status_code != 200:
+                    return False
+                json_response = response.json()
+                cgw_groups.extend(json_response['results'])
+
             fname = self.export_path / self.cgw_groups_filename
             with open(fname, 'w') as outfile:
                 json.dump(cgw_groups, outfile,indent=4)
+
             return True
 
     def importSDDCCGWRule(self):
