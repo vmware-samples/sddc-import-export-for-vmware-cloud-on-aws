@@ -470,3 +470,8 @@ python sddc_import_export.py -o testbed --test-name create-cgw-groups --num-obje
 This will delete 1,500 test Compute Gateway groups, starting with `cgw-test-group-0050`
 ```bash
 python sddc_import_export.py -o testbed --test-name delete-cgw-groups --num-objects 1500 --start-num 50
+```
+This will delete ALL CGW GROUPS. Use with extreme caution.
+```bash
+python sddc_import_export.py -o testbed --test-name delete-all-cgw-groups
+```
