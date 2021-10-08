@@ -490,7 +490,7 @@ def main(args):
         else:
             print("Could not export Source SDDC Info")
 
-        if (ioObj.cgw_export is True) or (ioObj.mgw_export is True):
+        if (ioObj.cgw_export is True) or (ioObj.mgw_export is True) or (ioObj.dfw_export is True):
             print("Beginning Services export...")
             retval = ioObj.exportSDDCServices()
             if retval is True:
@@ -713,12 +713,12 @@ def main(args):
                     print("Live import will proceed")
 
         if ioObj.network_import is True:
-            print("Beginning CGW network import...")        
+            print("Beginning CGW network import...")
             import_table = ioObj.importCGWNetworks()
             print('Import results:\n')
             print(import_table)
 
-        if (ioObj.cgw_import is True) or (ioObj.mgw_import is True):
+        if (ioObj.cgw_import is True) or (ioObj.mgw_import is True) or (ioObj.dfw_import is True):
             print("Beginning Services import...")
             ioObj.importSDDCServices()
 
