@@ -1174,7 +1174,6 @@ class VMCImportExport:
             # After grabbing an intial set of results, check for presence of a cursor
             while "cursor" in json_response:
                 myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups?cursor=" + json_response['cursor']
-                print(myURL)
                 response = self.invokeVMCGET(myURL)
                 if response is None or response.status_code != 200:
                     return False
