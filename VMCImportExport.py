@@ -1163,7 +1163,7 @@ class VMCImportExport:
             return True
 
     def exportSDDCCGWGroups(self):
-            """Exports the CGW network segments to a JSON file"""
+            """Exports the CGW groups to a JSON file"""
             myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups"
             response = self.invokeVMCGET(myURL)
             if response is None or response.status_code != 200:
