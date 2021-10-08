@@ -1125,6 +1125,27 @@ class VMCImportExport:
             print(f'TEST MODE: would have added CGW group {group_name}')
             return True
 
+    def deleteAllSDDCCGWGroups(self):
+        """ Just what it sounds like - delete every single CGW group. Use with caution"""
+        myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups"
+        response = self.invokeVMCGET(myURL)
+        if response is None or response.status_code != 200:
+            return False
+        json_response = response.json()
+        cgw_groups = json_response['results']
+
+        # After grabbing an intial set of results, check for presence of a cursor
+        while "cursor" in json_response:
+            myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups?cursor=" + json_response['cursor']
+            response = self.invokeVMCGET(myURL)
+            if response is None or response.status_code != 200:
+                return False
+            json_response = response.json()
+            cgw_groups.extend(json_response['results'])
+
+        for grp in cgw_groups:
+            retval = self.deleteSDDCCGWGroup(grp['id'])
+
     def deleteSDDCCGWGroup(self, group_name: str):
         """Creates a CGW Group"""
         myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }

@@ -83,7 +83,7 @@ def main(args):
                                     "Import an SDDC from a zipfile:\n"
                                     "python sddc_import_export.py -o import -i json/2020-12-15_10-33-43_json-export.zip\n\n")
     ap.add_argument("-o","--operation", required=True, choices=['import-nsx','export-nsx','import','export','export-import','check-vmc-ini','export-vcenter','import-vcenter','rolesync','testbed'], help="SDDC-to-SDDC operations: import, export, or export and then immediately import. check-vmc-ini displays the currently configured Org and SDDC for import and export operations. export-nsx to export an on-prem NSX config, then import-nsx to import it to VMC. export-vcenter and import-vcenter to export and import vCenter configs. testbed to create and destroy large numbers of objects to test API limits")
-    ap.add_argument("-t", "--test-name", required=False, nargs='+', choices=['create-cgw-groups','delete-cgw-groups'])
+    ap.add_argument("-t", "--test-name", required=False, nargs='+', choices=['create-cgw-groups','delete-cgw-groups','delete-all-cgw-groups'])
     ap.add_argument("-n", "--num-objects", required=False, type=int, default=1000)
     ap.add_argument("-sn", "--start-num", required=False, type=int, default=0)
     ap.add_argument("-et","--export-type", required=False, choices=['os','s3'],help="os for a regular export, s3 for export to S3 bucket")
@@ -279,6 +279,16 @@ def main(args):
                         print(grp_name)
                         retval = ioObj.createSDDCCGWGroup(grp_name)
 
+            if t == 'delete-all-cgw-groups':
+                print('Deleting all CGW groups...')
+                if ioObj.import_mode == 'live':
+                    if ioObj.import_mode_live_warning:
+                        continue_live = yes_or_no("WARNING - Script is running in live mode - ALL CGW GROUPS WILL BE DELETED. Continue in live mode?")
+                        if continue_live is False:
+                            ioObj.import_mode = 'test'
+
+                retval = ioObj.deleteAllSDDCCGWGroups()
+
             if t == 'delete-cgw-groups':
                 if args.num_objects < 1:
                     print('num-objects argument must be a positive integer.')
@@ -286,6 +296,12 @@ def main(args):
                     print('start-num argument must be a positive integer or 0')
                 else:
                     print(f'Deleting testbed of {args.num_objects} CGW groups')
+                    if ioObj.import_mode == 'live':
+                        if ioObj.import_mode_live_warning:
+                            continue_live = yes_or_no("WARNING - Script is running in live mode - CGW groups will be deleted. Continue in live mode?")
+                            if continue_live is False:
+                                ioObj.import_mode = 'test'
+
                     for i in range(args.start_num,args.num_objects+args.start_num):
                         grp_name = f'cgw-test-group-{i:04}'
                         retval = ioObj.deleteSDDCCGWGroup(grp_name)
