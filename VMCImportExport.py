@@ -154,8 +154,12 @@ class VMCImportExport:
         #Network segments - CGW
         self.network_export              = self.loadConfigFlag(config,"exportConfig","network_export")
         self.network_export_filename     = self.loadConfigFilename(config,"exportConfig","network_export_filename")
+        self.network_dhcp_static_binding_export = self.loadConfigFilename(config,"exportConfig","network_dhcp_static_binding_export")
+        self.network_dhcp_static_binding_filename = self.loadConfigFilename(config,"exportConfig","network_dhcp_static_binding_filename")
+        self.CGWDHCPbindings = []
         self.network_import              = self.loadConfigFlag(config,"importConfig","network_import")
         self.network_import_filename     = self.loadConfigFilename(config,"importConfig","network_import_filename")
+        self.network_dhcp_static_binding_import = self.loadConfigFlag(config,"importConfig","network_dhcp_static_binding_import")
         self.network_import_max_networks = int(config.get("importConfig", "network_import_max_networks"))
         self.network_import_exclude_list = self.loadConfigRegex(config,"importConfig","network_import_exclude_list",'|')
 
@@ -535,7 +539,31 @@ class VMCImportExport:
         fname = self.export_path / self.network_export_filename
         with open(fname, 'w') as outfile:
             json.dump(cgw_networks, outfile,indent=4)
+
+        if self.network_dhcp_static_binding_export:
+            for network in cgw_networks:
+                retval = self.getSDDCCGWDHCPBindings(network['id'])
+
+            fname = self.export_path / self.network_dhcp_static_binding_filename
+            with open(fname, 'w') as outfile:
+                json.dump(self.CGWDHCPbindings, outfile, indent=4)
+
         return True
+
+    def getSDDCCGWDHCPBindings( self, segment_id: str):
+        """Appends any DHCP static bindings for segment_id to the class variable CGWDHCPbindings"""
+        myURL = (self.proxy_url + f'/policy/api/v1/infra/tier-1s/cgw/segments/{segment_id}/dhcp-static-binding-configs')
+        response = self.invokeVMCGET(myURL)
+        if response is None or response.status_code != 200:
+            return False
+
+        json_response = response.json()
+        if json_response['result_count'] > 0:
+            dhcp_static_bindings = json_response['results']
+            self.CGWDHCPbindings.append(dhcp_static_bindings)
+        else:
+            return False
+
 
     def exportSDDCMGWRule(self):
         """Exports the MGW firewall rules to a JSON file"""
@@ -1980,6 +2008,8 @@ class VMCImportExport:
                 return 'vpn-local-bgp.json'
             elif (key == 'vcenter_folders_filename'):
                 return 'vcenterfolderpaths.json'
+            elif (key == 'network_dhcp_static_binding_filename'):
+                return 'dhcp-static-binding.json'
 
     def loadDestOrgData(self):
         """Populate destination org properties"""
