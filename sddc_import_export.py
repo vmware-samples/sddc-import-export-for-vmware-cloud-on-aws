@@ -717,6 +717,8 @@ def main(args):
             import_table = ioObj.importCGWNetworks()
             print('Import results:\n')
             print(import_table)
+            if ioObj.network_dhcp_static_binding_import is True:
+                ioObj.importCGWDHCPStaticBindings()
 
         if (ioObj.cgw_import is True) or (ioObj.mgw_import is True) or (ioObj.dfw_import is True):
             print("Beginning Services import...")

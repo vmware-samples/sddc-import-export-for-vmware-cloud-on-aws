@@ -541,6 +541,7 @@ class VMCImportExport:
             json.dump(cgw_networks, outfile,indent=4)
 
         if self.network_dhcp_static_binding_export:
+            self.CGWDHCPbindings = []
             for network in cgw_networks:
                 retval = self.getSDDCCGWDHCPBindings(network['id'])
 
@@ -553,14 +554,17 @@ class VMCImportExport:
     def getSDDCCGWDHCPBindings( self, segment_id: str):
         """Appends any DHCP static bindings for segment_id to the class variable CGWDHCPbindings"""
         myURL = (self.proxy_url + f'/policy/api/v1/infra/tier-1s/cgw/segments/{segment_id}/dhcp-static-binding-configs')
+        #print(myURL)
         response = self.invokeVMCGET(myURL)
         if response is None or response.status_code != 200:
             return False
 
         json_response = response.json()
+        #print(json_response)
         if json_response['result_count'] > 0:
             dhcp_static_bindings = json_response['results']
             self.CGWDHCPbindings.append(dhcp_static_bindings)
+            print(self.CGWDHCPbindings)
         else:
             return False
 
@@ -994,6 +998,39 @@ class VMCImportExport:
         for i in importResults:
             table.add_row([importResults[i]['display_name'],importResults[i]['result'],importResults[i]['result_note'],importResults[i]['id']])
         return (table)
+
+    def importCGWDHCPStaticBindings(self):
+        fname = self.import_path / self.network_dhcp_static_binding_filename
+        try:
+            with open(fname) as filehandle:
+                bindings = json.load(filehandle)
+        except:
+            print('Import failed - unable to open', fname)
+            return
+
+        for binding in bindings[0]:
+            payload = {}
+            for x in binding:
+                # Strip out underscore keys - these are system generated and cannot be imported
+                if x[0:1]  != '_':
+                    payload[x] = binding[x]
+
+            if self.import_mode == 'live':
+                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                myURL = self.proxy_url + "/policy/api/v1" +  binding['path']
+                if self.sync_mode is True:
+                    response = requests.patch(myURL, headers=myHeader, json=payload)
+                else:
+                    response = requests.put(myURL, headers=myHeader, json=payload)
+                if response.status_code == 200:
+                    result = "SUCCESS"
+                    print(f'Added {payload["display_name"]}')
+                else:
+                    result = "FAIL"
+                    print( f'API Call Status {response.status_code}, text:{response.text}')
+            else:
+                print(f'TEST MODE: Would have added binding {payload["display_name"]}')
+
 
     def importSDDCServices(self):
         """Import all services from a JSON file"""
