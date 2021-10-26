@@ -98,7 +98,7 @@ class VMCConnection():
             print('Access token expired, attempting to refresh...')
             self.getAccessToken()
 
-    def invokeVMCGET(self,url: str, header: str = None) -> requests.Response:
+    def invokeVMCGET(self,url: str, header: dict = None) -> requests.Response:
             """Invokes a VMC On AWS GET request"""
             self.check_access_token_expiration()
             myHeader = {'csp-auth-token': self.access_token}
@@ -110,6 +110,28 @@ class VMCConnection():
             except Exception as e:
                     self.lastJSONResponse = e
                     return None
+
+    def invokeVMCPUT(self,url: str, payload: str, patchMode: bool = False, headers: dict = None)  -> requests.Response:
+        self.check_access_token_expiration()
+        if headers is None:
+            headers = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+
+        try:
+            if patchMode is False:
+                response = requests.patch(url, headers=headers, data=payload)
+            else:
+                response = requests.post(url, headers=headers, data=payload )
+
+            if response.status_code != 200:
+                self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+            return response
+        except Exception as e:
+            self.lastJSONResponse = e
+            return None
+
+
+
+
 
 class VMCSDDC():
     def __init__(self, refresh_token: str, org_id: str, sddc_id: str) -> None:
