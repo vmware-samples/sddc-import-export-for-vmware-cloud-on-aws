@@ -51,7 +51,7 @@ from pathlib import Path
 from prettytable import PrettyTable
 import json
 import os
-import vcenter
+#import vcenter
 from VMCImportExport import VMCImportExport
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

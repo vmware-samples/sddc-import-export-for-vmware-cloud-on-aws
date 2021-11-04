@@ -76,6 +76,8 @@ If you get pip installation errors complaining about being unable to install `gi
 - Remove line 10 in requirements.txt `git+https://github.com/vmware/vsphere-automation-sdk-python.git@v7.0.2.0`
 - Comment out line 54 in sddc_import_export.py `import vcenter`
 
+You must uncomment these lines in order to use the vCenter folder export feature. Installing the required library requires you to have git installed on your local system.
+
 ### 1.3.4. Update vmc.ini
 
 Version 1.1 introduces the gov_cloud_urls flag in vmc.ini. The default value is False - change this value to True if you are using GovCloud.
@@ -178,7 +180,7 @@ aws_s3_export_bucket = ""
 The aws.ini configuration can also be passed via command line. Use sddc_import_export --help for syntax.
 
 ### 1.3.7. Update vcenter.ini (optional)
-If you want to use the optional feature to sync your on-prem vCenter folder structure to VMC, you must update vcenter.ini with the appropriate URLs, credentials, and Datacenter name. The tool can only export and import a single datacenter object.
+If you want to use the optional feature to sync your on-prem vCenter folder structure to VMC, you must update vcenter.ini with the appropriate URLs, credentials, and Datacenter name. The tool can only export and import a single datacenter object. The required libraries are commented out by default in `requirements.txt`, and line 54 of `sddc_import_export.py` is also commented out `import vmc`. You must uncomment both lines and run the requirements.txt installation again for dependencies. This library is dependent on git being installed on your local system.
 
 ```
 [vCenterConfig]
