@@ -1164,6 +1164,19 @@ class VMCImportExport:
                 self.lastJSONResponse = e
                 return None
 
+    def invokeVMCPUT(self, url: str,json_data: str) -> requests.Response:
+        """Invokes a VMC on AWS PUT request"""
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        self.check_access_token_expiration()
+        try:
+            response = requests.put(url,headers=myHeader,data=json_data)
+            if response.status_code != 200:
+                self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+            return response
+        except Exception as e:
+            self.lastJSONResponse = e
+            return None
+
     def invokeVMCPATCH(self, url: str,json_data: str) -> requests.Response:
         """Invokes a VMC on AWS PATCH request"""
         myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
