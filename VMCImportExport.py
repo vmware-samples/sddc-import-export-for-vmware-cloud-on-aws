@@ -564,7 +564,7 @@ class VMCImportExport:
         if json_response['result_count'] > 0:
             dhcp_static_bindings = json_response['results']
             self.CGWDHCPbindings.append(dhcp_static_bindings)
-            print(self.CGWDHCPbindings)
+            #print(self.CGWDHCPbindings)
         else:
             return False
 
