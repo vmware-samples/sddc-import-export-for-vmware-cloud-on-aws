@@ -1140,10 +1140,21 @@ class VMCImportExport:
     def invokeVMCGET(self,url: str) -> requests.Response:
         """Invokes a VMC On AWS GET request"""
         myHeader = {'csp-auth-token': self.access_token}
+        attempts = 1
+        status_code = 0
         try:
-            response = requests.get(url,headers=myHeader)
-            if response.status_code != 200:
+            while attempts <=3 and status_code != 200:
+                if attempts > 1:
+                    print('Retrying...')
+                response = requests.get(url,headers=myHeader)
+                status_code = response.status_code
+                if status_code == 200:
+                    break
                 self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+                if status_code == 504:
+                    attempts +=1
+                    print('Received gateway time out error 504, pausing...')
+                    time.sleep(5)
             return response
         except Exception as e:
                 self.lastJSONResponse = e
