@@ -26,6 +26,8 @@ class VMCImportExport:
 
     def __init__(self,configPath="./config_ini/config.ini", vmcConfigPath="./config_ini/vmc.ini", awsConfigPath="./config/aws.ini", vCenterConfigPath="./config_ini/vcenter.ini"):
         self.access_token = None
+        self.access_token_expiration = None
+        self.activeRefreshToken = None
         self.proxy_url = None
         self.proxy_url_short = None
         self.lastJSONResponse = None
@@ -1128,6 +1130,7 @@ class VMCImportExport:
                     print('Could not find user with email ' + email)
 
     def invokeCSPGET(self,url: str) -> requests.Response:
+        self.check_access_token_expiration()
         try:
             response = requests.get(url,headers= {"Authorization":"Bearer " + self.access_token})
             if response.status_code != 200:
@@ -1140,6 +1143,7 @@ class VMCImportExport:
     def invokeVMCGET(self,url: str) -> requests.Response:
         """Invokes a VMC On AWS GET request"""
         myHeader = {'csp-auth-token': self.access_token}
+        self.check_access_token_expiration()
         attempts = 1
         status_code = 0
         try:
@@ -1163,6 +1167,7 @@ class VMCImportExport:
     def invokeVMCPATCH(self, url: str,json_data: str) -> requests.Response:
         """Invokes a VMC on AWS PATCH request"""
         myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        self.check_access_token_expiration()
         try:
             response = requests.patch(url,headers=myHeader,data=json_data)
             if response.status_code != 200:
@@ -1953,15 +1958,29 @@ class VMCImportExport:
 
     def getAccessToken(self,myRefreshToken):
         """ Gets the Access Token using the Refresh Token """
+        self.activeRefreshToken = myRefreshToken
         params = {'api_token': myRefreshToken}
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         response = requests.post(f'{self.strCSPProdURL}/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
         jsonResponse = response.json()
+        #print(jsonResponse)
         try:
             self.access_token = jsonResponse['access_token']
+            expires_in = jsonResponse['expires_in']
+            expirestime = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
+            self.access_token_expiration = expirestime
+            print(f'Token expires at {expirestime}')
         except:
-            self.access_token = ""
+            self.access_token = None
+            self.access_token_expiration = None
         return self.access_token
+
+    def check_access_token_expiration(self) -> None:
+        """Retrieve a new access token if it is near expiration"""
+        time_to_expire = self.access_token_expiration - datetime.datetime.now()
+        if time_to_expire.total_seconds() <= 100:
+            print('Access token expired, attempting to refresh...')
+            self.getAccessToken(self.activeRefreshToken)
 
     def getNSXTproxy(self, org_id, sddc_id):
         """ Gets the Reverse Proxy URL """
