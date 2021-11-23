@@ -43,6 +43,7 @@ def invokeVMCGET(url: str) -> requests.Response:
         response = requests.get(url,headers=myHeader)
         if response.status_code != 200:
             lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+            print(lastJSONResponse)
         return response
     except Exception as e:
             lastJSONResponse = e
@@ -85,6 +86,7 @@ def exportSDDCServices():
     json_response = response.json()
     sddc_services = json_response['results']
     fname = 'api-test-services-exported.json'
+    print('Writing to file')
     with open(fname, 'w+') as outfile:
         for service in sddc_services:
             if service["_create_user"]!= "admin" and service["_create_user"]!="admin;admin" and service["_create_user"]!="system":
