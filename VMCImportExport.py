@@ -11,6 +11,7 @@ import configparser                     # parsing config file
 import datetime
 import glob
 import json
+import random
 import requests                         # need this for Get/Post/Delete
 import os
 import re
@@ -1201,12 +1202,55 @@ class VMCImportExport:
                 self.lastJSONResponse = e
                 return None
 
-    def createSDDCCGWGroup(self, group_name: str):
+    def findRandomTestbedVM(self) -> str:
+        """Looks for any of the first 100 VMs available in NSX-T - used to generate realistic group members for a testbed"""
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        myURL = self.proxy_url + '/policy/api/v1/search/aggregate?page_size=100'
+        json_data = {"primary":{"resource_type":"VirtualMachine","filters":[{"field_names":"!tags.tag","value":"nsx_policy_internal"},{"field_names":"!display_name","value":"(\"NSX-Edge-0\" OR \"NSX-Edge-1\" OR \"NSX-Manager-0\" OR \"NSX-Manager-1\" OR \"NSX-Manager-2\" OR \"vcenter\")"}]},"related":[{"resource_type":"TransportNode OR HostNode","join_condition":"id:source.target_id","alias":"TransportNode"},{"resource_type":"VirtualNetworkInterface","join_condition":"owner_vm_id:external_id","alias":"VirtualNetworkInterface"},{"resource_type":"HostNode","join_condition":"id:host_id","alias":"HostNode","size":0},{"resource_type":"DiscoveredNode","join_condition":"external_id:$2.discovered_node_id","alias":"DiscoveredNode","size":0},{"resource_type":"ComputeManager","join_condition":"id:$3.origin_id","alias":"ComputeManager"}],"data_source":"ALL"}
+        response = requests.post(myURL, headers=myHeader, data=json.dumps(json_data))
+        if response.status_code != 200:
+            self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+            return None
+        json_response = response.json()
+        vm_list = json_response['results']
+        if len(vm_list) == 0:
+            return None
+        i = random.randint(0,len(vm_list)-1)
+        return(vm_list[i]['primary']['display_name'])
+        #print(json_response)
+
+    def createSDDCCGWGroup(self, group_name: str, vm_name_to_add: str = None):
         """Creates a new CGW Group"""
+        self.check_access_token_expiration()
         myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
         myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups/" + group_name
 
-        json_data = {"display_name":group_name, "id":group_name }
+        if vm_name_to_add is None:
+            vm_name_to_add = "sample_vm_" + group_name
+
+        json_data = {
+            "expression": [
+                {
+                    "ip_addresses": [
+                        "192.168.100.1"
+                    ],
+                    "resource_type": "IPAddressExpression"
+                },
+                {
+                    "conjunction_operator": "OR",
+                    "resource_type": "ConjunctionOperator"
+                },
+                {
+                    "member_type": "VirtualMachine",
+                    "key": "Name",
+                    "operator": "EQUALS",
+                    "value": vm_name_to_add,
+                    "resource_type": "Condition"
+                }
+            ],
+            "display_name":group_name, "id":group_name 
+        }
+
         if self.import_mode == "live":
             group_resp = requests.put(myURL,headers=myHeader,data=json.dumps(json_data))
             if group_resp.status_code == 200:

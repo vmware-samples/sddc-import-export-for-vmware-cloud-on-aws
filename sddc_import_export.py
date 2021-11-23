@@ -277,7 +277,7 @@ def main(args):
                     for i in range(args.start_num,args.num_objects+args.start_num):
                         grp_name = f'cgw-test-group-{i:04}'
                         print(grp_name)
-                        retval = ioObj.createSDDCCGWGroup(grp_name)
+                        retval = ioObj.createSDDCCGWGroup(grp_name, ioObj.findRandomTestbedVM())
 
             if t == 'delete-all-cgw-groups':
                 print('Deleting all CGW groups...')
