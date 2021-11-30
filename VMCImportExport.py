@@ -751,9 +751,18 @@ class VMCImportExport:
         response = self.invokeVMCGET(myURL)
         if response is None or response.status_code != 200:
             return False
-
         json_response = response.json()
         sddc_services = json_response['results']
+
+        # After grabbing an intial set of results, check for presence of a cursor
+        while "cursor" in json_response:
+            myURL = self.proxy_url + "/policy/api/v1/infra/services?cursor=" + json_response['cursor']
+            response = self.invokeVMCGET(myURL)
+            if response is None or response.status_code != 200:
+                return False
+            json_response = response.json()
+            sddc_services.extend(json_response['results'])
+
         if OnlyUserDefinedServices is True:
             fname = self.export_path / self.services_filename
             with open(fname, 'w+') as outfile:
