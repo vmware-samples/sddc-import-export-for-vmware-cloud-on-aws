@@ -747,16 +747,32 @@ class VMCImportExport:
         """Exports SDDC services to a JSON file
         Args: bool OnlyUserDefinedServices, default True, if you want to ignore predefined system services
         """
+
+        debug_mode = False
+        debug_page_size = 20
+
         myURL = (self.proxy_url + "/policy/api/v1/infra/services")
+        if debug_mode:
+            myURL += f'?page_size={debug_page_size}'
+            print(f'DEBUG, page size set to {debug_page_size}, calling {myURL}')
         response = self.invokeVMCGET(myURL)
         if response is None or response.status_code != 200:
             return False
         json_response = response.json()
         sddc_services = json_response['results']
+        result_count = json_response['result_count']
+        if debug_mode:
+            print(f'Result count: {result_count}')
 
         # After grabbing an intial set of results, check for presence of a cursor
         while "cursor" in json_response:
+            #print(json_response)
+            result_count -= debug_page_size
             myURL = self.proxy_url + "/policy/api/v1/infra/services?cursor=" + json_response['cursor']
+            if debug_mode:
+                print(f'{result_count} records to go.')
+                myURL += f'&page_size={debug_page_size}'
+                print(f'DEBUG, page size set to {debug_page_size}, calling {myURL}')
             response = self.invokeVMCGET(myURL)
             if response is None or response.status_code != 200:
                 return False
@@ -1311,16 +1327,31 @@ class VMCImportExport:
 
     def exportSDDCCGWGroups(self):
             """Exports the CGW groups to a JSON file"""
+
+            debug_mode = False
+            debug_page_size = 20
+
             myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups"
+            if debug_mode:
+                myURL += f'?page_size={debug_page_size}'
+                print(f'DEBUG, page size set to {debug_page_size}, calling {myURL}')
             response = self.invokeVMCGET(myURL)
             if response is None or response.status_code != 200:
                 return False
             json_response = response.json()
             cgw_groups = json_response['results']
+            result_count = json_response['result_count']
+            if debug_mode:
+                print(f'Result count: {result_count}')
 
             # After grabbing an intial set of results, check for presence of a cursor
             while "cursor" in json_response:
+                result_count -= debug_page_size
                 myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups?cursor=" + json_response['cursor']
+                if debug_mode:
+                    print(f'{result_count} records to go.')
+                    myURL += f'&page_size={debug_page_size}'
+                    print(f'DEBUG, page size set to {debug_page_size}, calling {myURL}')
                 response = self.invokeVMCGET(myURL)
                 if response is None or response.status_code != 200:
                     return False
