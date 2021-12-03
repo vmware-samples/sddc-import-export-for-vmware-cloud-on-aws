@@ -38,6 +38,8 @@ class VMCImportExport:
         self.source_sddc_version = ""
         self.source_sddc_state = ""
         self.source_sddc_info = ""
+        self.source_sddc_nsx_info = ""
+        self.source_sddc_nsx_csp_url = ""
         self.sddc_info_hide_sensitive_data = True
         self.gov_cloud_urls = False
         self.dest_sddc_name = ""
@@ -1331,7 +1333,8 @@ class VMCImportExport:
             debug_mode = False
             debug_page_size = 20
 
-            myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups"
+            myURL = (self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups")
+
             if debug_mode:
                 myURL += f'?page_size={debug_page_size}'
                 print(f'DEBUG, page size set to {debug_page_size}, calling {myURL}')
@@ -2193,6 +2196,7 @@ class VMCImportExport:
         else:
             return False
 
+
     def loadOrgData(self,orgID):
         """Download the JSON for an organization object"""
         myHeader = {'csp-auth-token': self.access_token}
@@ -2224,6 +2228,17 @@ class VMCImportExport:
             self.source_sddc_state = jsonResponse['sddc_state']
             self.source_sddc_version = jsonResponse['resource_config']['sddc_manifest']['vmc_version']
             self.source_sddc_info = jsonResponse
+        else:
+            return False
+
+    def loadSourceSDDCNSXData(self):
+        jsonResponse = self.loadSDDCNSX(self.source_org_id, self.source_sddc_id)
+        if jsonResponse != "":
+            for login_url in jsonResponse['login_urls']:
+                #print(login_url)
+                if login_url['access_type'] == 'PRIVATE' and login_url['auth_type'] == 'CSP':
+                    self.source_sddc_nsx_csp_url = login_url['preferred_url']
+                    break
         else:
             return False
 
@@ -2259,6 +2274,15 @@ class VMCImportExport:
         except:
             jsonResponse = ""
         return jsonResponse
+
+    def loadSDDCNSX(self, orgID, sddcID):
+        """Loads SDDC URLs and credentials"""
+        myURL = self.strProdURL + f'/api/network/{orgID}/core/deployments/{sddcID}/nsx'
+        response = self.invokeCSPGET(myURL)
+        if response is None or response.status_code != 200:
+            print(f'Error: {response.status_code}, {response.text}')
+            return False
+        return response.json()
 
     def searchOrgUser(self,orgid,userSearchTerm):
         myURL = (self.strCSPProdURL + "/csp/gateway/am/api/orgs/" + orgid + "/users/search?userSearchTerm=" + userSearchTerm)

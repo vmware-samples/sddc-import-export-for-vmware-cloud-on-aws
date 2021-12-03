@@ -463,11 +463,16 @@ def main(args):
         retval = ioObj.loadSourceOrgData()
         if retval == False:
             print("Unable to load Source Org Data. Server response:{}".format(ioObj.lastJSONResponse))
-            sys.exit()    
+            sys.exit()
 
         retval = ioObj.loadSourceSDDCData()
         if retval == False:
             print("Unable to load Source SDDC Data. Server response:{}".format(ioObj.lastJSONResponse))
+            sys.exit()
+
+        retval = ioObj.loadSourceSDDCNSXData()
+        if retval == False:
+            print(f'Unable to load Source SDDC NSX Data. Server response: {ioObj.lastJSONResponse}')
             sys.exit()
 
         print(f'Exporting data from org {ioObj.source_org_display_name} ({ioObj.source_org_id}), SDDC {ioObj.source_sddc_name} ({ioObj.source_sddc_id}), SDDC version {ioObj.source_sddc_version}')
