@@ -17,7 +17,7 @@ class JSONResponse():
 
 class VMCConnection():
     """Connection to VMware Cloud on AWS"""
-    def __init__(self, refresh_token: str, org_id: str, sddc_id: str = None, ProdURL: str = 'https://vmc.vmware.com', CSPProdURL: str = 'https://console.cloud.vmware.com') -> None:
+    def __init__(self, refresh_token: str, org_id: str = None, sddc_id: str = None, ProdURL: str = 'https://vmc.vmware.com', CSPProdURL: str = 'https://console.cloud.vmware.com') -> None:
         self.access_token = None
         self.access_token_expiration = None
         self.CSPProdURL = CSPProdURL
