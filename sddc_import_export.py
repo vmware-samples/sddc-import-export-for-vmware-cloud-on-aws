@@ -403,15 +403,18 @@ def main(args):
     if intent_name == "check-vmc-ini":
         no_intent_found = False
 
-        ioObj.getAccessToken(ioObj.source_refresh_token)
-        if (ioObj.access_token == ""):
-            print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
-            sys.exit()
+        ioObj.connectSDDCs()
 
-        ioObj.getNSXTproxy(ioObj.source_org_id,ioObj.source_sddc_id)
-        if (ioObj.proxy_url == ""):
-            print("Unable to retrieve proxy. Server response:{}".format(ioObj.lastJSONResponse))
-            sys.exit()
+        print ("A",ioObj.sourceSDDC.vmcconn.proxy_url)
+        #ioObj.getAccessToken(ioObj.source_refresh_token)
+        #if (ioObj.access_token == ""):
+        #    print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
+        #    sys.exit()
+
+        #ioObj.getNSXTproxy(ioObj.source_org_id,ioObj.source_sddc_id)
+        #if (ioObj.proxy_url == ""):
+        #    print("Unable to retrieve proxy. Server response:{}".format(ioObj.lastJSONResponse))
+        #    sys.exit()
 
         retval = ioObj.loadSourceOrgData()
         if retval == False:

@@ -55,6 +55,22 @@ class VMCConnection():
             print('No SDDC ID found, call getNSXTproxy before continuing')
         else:
             self.getNSXTproxy()
+            response = self.loadOrgData()
+            print(response.json_body)
+
+    def loadOrgData(self):
+        """Download the JSON for an organization object"""
+        myHeader = {'csp-auth-token': self.access_token}
+
+        myURL = self.CSPProdURL + "/vmc/api/orgs/" + self.org_id
+        response = self.invokeVMCGET(myURL)
+        if response is None or response.status_code != 200:
+            return JSONResponse(False,None, response.text)
+
+        print('here')
+        print(response.json())
+        json_response = response.json()
+        return JSONResponse(True, json_response)
 
     def initVars(self, ProdURL: str, CSPProdURL: str, org_id: str, sddc_id: str) -> None:
         """Initialize the common variables between both refresh token and OAuth"""

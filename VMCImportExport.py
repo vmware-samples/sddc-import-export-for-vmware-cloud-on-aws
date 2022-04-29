@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 from prettytable import PrettyTable
 from zipfile import ZipFile
+from vmc import VMCSDDC
 
 class VMCImportExport:
     """A class to handle importing and exporting portions of a VMC SDDC"""
@@ -240,6 +241,16 @@ class VMCImportExport:
                 print('Error deleting',filePath)
                 retval = False
         return retval
+
+    def connectSDDCs(self):
+        #     self.source_refresh_token     = vmcConfig.get("vmcConfig", "source_refresh_token")
+        # self.source_org_id            = vmcConfig.get("vmcConfig", "source_org_id")
+        # self.source_sddc_id           = vmcConfig.get("vmcConfig", "source_sddc_id")
+        # self.dest_refresh_token       = vmcConfig.get("vmcConfig", "dest_refresh_token")
+        # self.dest_org_id              = vmcConfig.get("vmcConfig", "dest_org_id")
+        # self.dest_sddc_id             = vmcConfig.get("vmcConfig", "dest_sddc_id")
+        self.sourceSDDC = VMCSDDC(self.source_org_id, self.source_sddc_id, self.source_refresh_token)
+        self.destSDDC = VMCSDDC(self.dest_org_id, self.dest_sddc_id, self.dest_refresh_token)
 
     def zipJSONfiles(self):
         """Creates a zipfile of exported JSON files"""
