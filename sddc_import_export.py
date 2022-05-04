@@ -179,9 +179,6 @@ def main(args):
     # Variable added so we can have an intent run multiple operations
     no_intent_found = True
 
-
-        
-
     ################################ Warning ######################################
     ## Changing the order of ifchecks on intent name can have unexpected          #
     ## side effects. If you want to do both an export and import in a single      #
@@ -337,15 +334,15 @@ def main(args):
                 print("Groups exported.")
         else:
                 print("Groups export error: {}".format(ioObj.lastJSONResponse))
-        
+
         retval = ioObj.exportOnPremDFWRule()
         if retval is True:
                 print("DFW rules exported.")
         else:
                 print("DFW rules error: {}".format(ioObj.lastJSONResponse))
-       
+
         print("Thanks for using the export function")
-    
+
     if intent_name == "import-nsx":
         no_intent_found = False
         print('Import mode:',ioObj.import_mode)
@@ -369,11 +366,11 @@ def main(args):
         if retval == False:
             print("Unable to load Dest SDDC Data. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
-        
+
         if ioObj.dest_sddc_state != 'READY':
             print("Unable to import, expected SDDC",ioObj.dest_sddc_name,"state READY, found state", ioObj.dest_sddc_state)
             sys.exit()
-        
+
         print(f'Importing data into org {ioObj.dest_org_display_name} ({ioObj.dest_org_id}), SDDC {ioObj.dest_sddc_name} ({ioObj.dest_sddc_id}), SDDC version {ioObj.dest_sddc_version}')
         #print(getSDDCS(ioObj.strProdURL,ioObj.dest_org_id, ioObj.access_token))
 
@@ -396,9 +393,8 @@ def main(args):
         if ioObj.dfw_import is True:
             print("Beginning DFW import...")
             ioObj.importOnPremDFWRule()
-            
+
         print("Import has been concluded. Thank you for using SDDC Import/Export for VMware Cloud on AWS.")
-            
 
     if intent_name == "check-vmc-ini":
         no_intent_found = False
@@ -416,7 +412,7 @@ def main(args):
         retval = ioObj.loadSourceOrgData()
         if retval == False:
             print("Unable to load Source Org Data. Server response:{}".format(ioObj.lastJSONResponse))
-            sys.exit()    
+            sys.exit()
 
         retval = ioObj.loadSourceSDDCData()
         if retval == False:
@@ -438,7 +434,7 @@ def main(args):
         retval = ioObj.loadDestOrgData()
         if retval == False:
             print("Unable to load Dest Org Data. Server response:{}".format(ioObj.lastJSONResponse))
-            sys.exit() 
+            sys.exit()
 
         retval = ioObj.loadDestSDDCData()
         if retval == False:
@@ -486,7 +482,7 @@ def main(args):
                 stop_script = yes_or_no("Errors purging old files. Continue running script?")
                 if stop_script is True:
                     sys.exit()
-        
+
         # Run all selected export functions
 
         retval = ioObj.exportSourceSDDCData()
@@ -584,7 +580,7 @@ def main(args):
                 print("Service access export error: {}.".format(ioObj.lastJSONResponse))
         else:
             print("Service access export skipped.")
-            
+
         if ioObj.vpn_export is True:
             print("Beginning VPN export...")
             retval = ioObj.exportVPN()
@@ -616,13 +612,13 @@ def main(args):
                     except Exception as e:
                         print('Failed to upload file.')
                         print(e)
-                
+
                 if ioObj.export_purge_after_zip == True:
                     print('export_purge_after_zip flag is true, deleting JSON files')
                     retval = ioObj.purgeJSONfiles()
                     if retval is False:
                         print('Unable to purge JSON files.')
-            
+
             retval = ioObj.purgeJSONzipfiles()
             if retval is True:
                 print('Zipfile maintenance completed with no errors.')
@@ -678,7 +674,7 @@ def main(args):
             else:
                 print('Extracted JSON from zip archive',import_file_path,"- continuing with import.")
                 print('Loaded import and export folder from command line:', ioObj.import_path )
-        
+
         print('Import mode:',ioObj.import_mode)
 
         ioObj.getAccessToken(ioObj.dest_refresh_token)
@@ -700,11 +696,11 @@ def main(args):
         if retval == False:
             print("Unable to load Dest SDDC Data. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
-        
+
         if ioObj.dest_sddc_state != 'READY':
             print("Unable to import, expected SDDC",ioObj.dest_sddc_name,"state READY, found state", ioObj.dest_sddc_state)
             sys.exit()
-        
+
         print(f'Importing data into org {ioObj.dest_org_display_name} ({ioObj.dest_org_id}), SDDC {ioObj.dest_sddc_name} ({ioObj.dest_sddc_id}), SDDC version {ioObj.dest_sddc_version}')
         #print(getSDDCS(ioObj.strProdURL,ioObj.dest_org_id, ioObj.access_token))
 
@@ -726,21 +722,36 @@ def main(args):
                 ioObj.importCGWDHCPStaticBindings()
 
         if (ioObj.cgw_import is True) or (ioObj.mgw_import is True) or (ioObj.dfw_import is True):
-            print("Beginning Services import...")
-            ioObj.importSDDCServices()
+            if ioObj.services_import is True:
+                print("Beginning Services import...")
+                ioObj.importSDDCServices()
+            else:
+                print("Service import set to False, skipping...")
 
         if ioObj.cgw_import is True:
             print("Beginning CGW import...")
-            retval = ioObj.importSDDCCGWGroup()
+            if ioObj.groups_import is True:
+                retval = ioObj.importSDDCCGWGroup()
+            else:
+                print("Groups import set to False, skipping...")
+                retval = True
+
             if retval is True:
+                print("Starting CGW rule import...")
                 ioObj.importSDDCCGWRule()
             else:
                 print('Could not import CGW groups, will not attempt CGW firewall rules import.')
 
         if ioObj.mgw_import is True:
             print("Beginning MGW import...")
-            retval = ioObj.importSDDCMGWGroup()
+            if ioObj.groups_import is True:
+                retval = ioObj.importSDDCMGWGroup()
+            else:
+                print("Groups import set to False, skipping...")
+                retval = True
+
             if retval is True:
+                print("Starting MGW rule import...")
                 ioObj.importSDDCMGWRule()
             else:
                 print('Coud not import MGW groups, will not attempt MGW firewall rules import.')
@@ -748,7 +759,7 @@ def main(args):
         if ioObj.dfw_import is True:
             print("Beginning DFW import...")
             ioObj.importSDDCDFWRule()
-            
+
         if ioObj.public_import is True:
             print("Beginning Public IP import...")
             ioObj.importSDDCPublicIPs()
@@ -770,7 +781,7 @@ def main(args):
             ioObj.importVPN()
 
         print("Import has been concluded. Thank you for using SDDC Import/Export for VMware Cloud on AWS.")
-            
+
     if no_intent_found == True:
         print("\nWelcome to sddc_import_export!")
         print("\nHere are the currently supported commands: ")

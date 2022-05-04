@@ -140,6 +140,12 @@ class VMCImportExport:
         self.srcNSXmgrPassword          =  vCenterConfig.get("nsxConfig","srcNSXmgrPassword")
         self.srcNSXmgrSSLVerify         =  self.loadConfigFlag(vCenterConfig,"nsxConfig","srcNSXmgrSSLVerify")
 
+        # Services
+        self.services_import          = self.loadConfigFlag(config,"importConfig","services_import")
+
+        # Groups
+        self.groups_import            = self.loadConfigFlag(config,"importConfig","groups_import")
+
         #CGW
         self.cgw_export               = self.loadConfigFlag(config,"exportConfig","cgw_export")
         self.cgw_export_filename      = self.loadConfigFilename(config,"exportConfig","cgw_export_filename")
