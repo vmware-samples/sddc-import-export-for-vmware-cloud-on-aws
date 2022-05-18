@@ -721,43 +721,44 @@ def main(args):
             if ioObj.network_dhcp_static_binding_import is True:
                 ioObj.importCGWDHCPStaticBindings()
 
-        #if (ioObj.cgw_import is True) or (ioObj.mgw_import is True) or (ioObj.dfw_import is True):
         if ioObj.services_import is True:
             print("Beginning Services import...")
             ioObj.importSDDCServices()
         else:
-            print("Service import set to False, skipping...")
+            print("Warning - Service import set to False, skipping...")
+
+        if ioObj.compute_groups_import is True:
+            retval = ioObj.importSDDCCGWGroup()
+        else:
+            print("Warning - Compute Groups import set to False, skipping...")
+
+        if ioObj.management_groups_import is True:
+            retval = ioObj.importSDDCMGWGroup()
+        else:
+            print("Warning - Management Groups import set to False, skipping...")
 
         if ioObj.cgw_import is True:
             print("Beginning CGW import...")
-            if ioObj.groups_import is True:
-                retval = ioObj.importSDDCCGWGroup()
-            else:
-                print("Groups import set to False, skipping...")
-                retval = True
-
-            if retval is True:
-                print("Starting CGW rule import...")
-                ioObj.importSDDCCGWRule()
-            else:
-                print('Could not import CGW groups, will not attempt CGW firewall rules import.')
+            if ioObj.services_import is False:
+                print('Service import is set to false, this can cause import errors if service objects are missing.')
+            if ioObj.compute_groups_import is False:
+                print('Compute groups import is set to false, this can cause import errors if compute group objects are missing.')
+            ioObj.importSDDCCGWRule()
 
         if ioObj.mgw_import is True:
             print("Beginning MGW import...")
-            if ioObj.groups_import is True:
-                retval = ioObj.importSDDCMGWGroup()
-            else:
-                print("Groups import set to False, skipping...")
-                retval = True
-
-            if retval is True:
-                print("Starting MGW rule import...")
-                ioObj.importSDDCMGWRule()
-            else:
-                print('Coud not import MGW groups, will not attempt MGW firewall rules import.')
+            if ioObj.services_import is False:
+                print('Service import is set to false, this can cause import errors if service objects are missing.')
+            if ioObj.management_groups_import is False:
+                print('Management groups import is set to false, this can cause import errors if compute group objects are missing.')
+            ioObj.importSDDCMGWRule()
 
         if ioObj.dfw_import is True:
             print("Beginning DFW import...")
+            if ioObj.services_import is False:
+                print('Service import is set to false, this can cause import errors if service objects are missing.')
+            if ioObj.compute_groups_import is False:
+                print('Compute groups import is set to false, this can cause import errors if compute group objects are missing.')
             ioObj.importSDDCDFWRule()
 
         if ioObj.public_import is True:

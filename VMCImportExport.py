@@ -144,7 +144,8 @@ class VMCImportExport:
         self.services_import          = self.loadConfigFlag(config,"importConfig","services_import")
 
         # Groups
-        self.groups_import            = self.loadConfigFlag(config,"importConfig","groups_import")
+        self.compute_groups_import            = self.loadConfigFlag(config,"importConfig","compute_groups_import")
+        self.management_groups_import         = self.loadConfigFlag(config,"importConfig","management_groups_import")
 
         #CGW
         self.cgw_export               = self.loadConfigFlag(config,"exportConfig","cgw_export")
