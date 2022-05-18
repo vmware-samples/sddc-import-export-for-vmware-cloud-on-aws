@@ -721,12 +721,12 @@ def main(args):
             if ioObj.network_dhcp_static_binding_import is True:
                 ioObj.importCGWDHCPStaticBindings()
 
-        if (ioObj.cgw_import is True) or (ioObj.mgw_import is True) or (ioObj.dfw_import is True):
-            if ioObj.services_import is True:
-                print("Beginning Services import...")
-                ioObj.importSDDCServices()
-            else:
-                print("Service import set to False, skipping...")
+        #if (ioObj.cgw_import is True) or (ioObj.mgw_import is True) or (ioObj.dfw_import is True):
+        if ioObj.services_import is True:
+            print("Beginning Services import...")
+            ioObj.importSDDCServices()
+        else:
+            print("Service import set to False, skipping...")
 
         if ioObj.cgw_import is True:
             print("Beginning CGW import...")
