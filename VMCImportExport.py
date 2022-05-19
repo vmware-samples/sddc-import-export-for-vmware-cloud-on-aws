@@ -714,9 +714,34 @@ class VMCImportExport:
                     else:
                         self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
                         print(f'API Call Status {response.status_code}, text:{response.text}')
+                        if len(self.cgw_groups_import_error_dict) > 0:
+                            self.check_compute_group_errors(response.text)
                 else:
                     print("TEST MODE - DFW rule " + commEnt["display_name"] + " would have been imported.")
         return True
+
+    def check_compute_group_errors(self, response_text: str):
+        #  We start with a response_text input of: "Following dependent objects, used in path=[/infra/domains/cgw/security-policies/Security-demo/rules/within_backend], does not exist path=[/infra/domains/cgw/groups/Security-backend,/infra/domains/cgw/groups/Security-backend]."
+        
+        split1=response_text.split("does not exist path=")
+        if len(split1) > 1:
+            buf = split1[1]
+            # Our first split leaves us with this saved in buf [/infra/domains/cgw/groups/Security-backend,/infra/domains/cgw/groups/Security-backend].
+            start_char = buf.find("[")
+            end_char = buf.find("]")
+            if start_char >= 0 and end_char > start_char:
+                # Extract the string between the []
+                not_exist_groups= buf[start_char+1:end_char]
+
+                # Split on a comma to get a list object containing the group objects
+                not_exist_groups_list = not_exist_groups.split(",")
+
+                # See if any of the group objects are found in the group import error object
+                for group in not_exist_groups_list:
+                    if group in self.cgw_groups_import_error_dict:
+                        print(f'INFO - Firewall rule import failed because group object {self.cgw_groups_import_error_dict[group]["display_name"]} was not imported. The group object import failure error was: {self.cgw_groups_import_error_dict[group]["error_message"]}')
+            else:
+                print("checkGroupErrors() - could not find start and end brackets")
 
     def exportServiceAccess(self):
         """Exports SDDC Service Access config to a JSON file"""
@@ -1419,7 +1444,14 @@ class VMCImportExport:
                         createfwruleresp = requests.patch(myURL,headers=myHeader,data=json_data)
                     else:
                         createfwruleresp = requests.put(myURL,headers=myHeader,data=json_data)
-                    print("Firewall Rule " + payload["display_name"] + " has been imported.")
+
+                    if  createfwruleresp.status_code == 200:
+                        print("Firewall Rule " + payload["display_name"] + " has been imported.")
+                    else:
+                        self.lastJSONResponse = f'API Call Status {createfwruleresp.status_code}, text:{createfwruleresp.text}'
+                        print(f'API Call Status {createfwruleresp.status_code}, text:{createfwruleresp.text}')
+                        if len(self.cgw_groups_import_error_dict) > 0:
+                            self.check_compute_group_errors(createfwruleresp.text)  
                 else:
                     print("TEST MODE - Firewall Rule " + payload["display_name"] + " would have been imported." )
                 payload = {}
