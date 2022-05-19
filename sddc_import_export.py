@@ -729,6 +729,10 @@ def main(args):
 
         if ioObj.compute_groups_import is True:
             retval = ioObj.importSDDCCGWGroup()
+            if len(ioObj.cgw_groups_import_error_dict) > 0:
+                print("Error summary:")
+                for key in ioObj.cgw_groups_import_error_dict:
+                    print(f'{ioObj.cgw_groups_import_error_dict[key]["display_name"]} ({key}) - {ioObj.cgw_groups_import_error_dict[key]["error_message"]}')
         else:
             print("Warning - Compute Groups import set to False, skipping...")
 

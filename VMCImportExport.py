@@ -64,6 +64,7 @@ class VMCImportExport:
         self.aws_s3_export_access_id = ""
         self.aws_s3_export_access_secret = ""
         self.aws_s3_export_bucket = ""
+        self.cgw_groups_import_error_dict = {}
         self.cgw_groups_import_exclude_list = []
         self.cgw_import_exclude_list = []
         self.mgw_groups_import_exclude_list = []
@@ -1459,7 +1460,10 @@ class VMCImportExport:
                         for item in group_expression:
                             if item["resource_type"] == "ExternalIDExpression":
                                 skip_vm_expression = True
-                                print(f'CGW Group {group["display_name"]} cannot be imported as it relies on VM external ID.')
+                                msg = f'CGW Group {group["display_name"]} cannot be imported as it relies on VM external ID.'
+                                print(msg)
+                                path = "/infra/domains/cgw/groups/" + group["id"]
+                                self.cgw_groups_import_error_dict[path] = { "display_name": payload["display_name"] , "error_message": msg }
                                 break
                     else:
                         continue
