@@ -728,6 +728,7 @@ def main(args):
             print("Warning - Service import set to False, skipping...")
 
         if ioObj.compute_groups_import is True:
+            print("Beginning Compute Groups import...")
             retval = ioObj.importSDDCCGWGroup()
             if len(ioObj.cgw_groups_import_error_dict) > 0:
                 print("Error summary:")
