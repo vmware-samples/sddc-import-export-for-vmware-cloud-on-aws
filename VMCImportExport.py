@@ -40,11 +40,13 @@ class VMCImportExport:
         self.source_sddc_info = ""
         self.source_sddc_nsx_info = ""
         self.source_sddc_nsx_csp_url = ""
+        self.source_sddc_enable_nsx_advanced_addon = False
         self.sddc_info_hide_sensitive_data = True
         self.gov_cloud_urls = False
         self.dest_sddc_name = ""
         self.dest_sddc_version = ""
         self.dest_sddc_state = ""
+        self.dest_sddc_enable_nsx_advanced_addon = False
         self.configPath = configPath
         self.vmcConfigPath = vmcConfigPath
         self.awsConfigPath = awsConfigPath
@@ -2290,10 +2292,12 @@ class VMCImportExport:
             self.dest_sddc_name = jsonResponse['name']
             self.dest_sddc_state = jsonResponse['sddc_state']
             self.dest_sddc_version = jsonResponse['resource_config']['sddc_manifest']['vmc_version']
+            if jsonResponse['resource_config']['nsxt_addons']:
+                if jsonResponse['resource_config']['nsxt_addons']['enable_nsx_advanced_addon']:
+                    self.dest_sddc_enable_nsx_advanced_addon = jsonResponse['resource_config']['nsxt_addons']['enable_nsx_advanced_addon']
             return True
         else:
             return False
-
 
     def loadSourceSDDCData(self):
         """Populate dest SDDC properties"""
@@ -2302,6 +2306,9 @@ class VMCImportExport:
             self.source_sddc_name = jsonResponse['name']
             self.source_sddc_state = jsonResponse['sddc_state']
             self.source_sddc_version = jsonResponse['resource_config']['sddc_manifest']['vmc_version']
+            if jsonResponse['resource_config']['nsxt_addons']:
+                if jsonResponse['resource_config']['nsxt_addons']['enable_nsx_advanced_addon']:
+                    self.source_sddc_enable_nsx_advanced_addon = jsonResponse['resource_config']['nsxt_addons']['enable_nsx_advanced_addon']
             self.source_sddc_info = jsonResponse
         else:
             return False
