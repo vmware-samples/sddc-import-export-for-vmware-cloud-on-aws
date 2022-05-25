@@ -786,6 +786,10 @@ def main(args):
             print("Beginning VPN import...")
             ioObj.importVPN()
 
+        if ioObj.nsx_adv_fw_import is True:
+            print("Beginning NSX advanced firewall import...")
+            ioObj.import_advanced_firewall()
+
         print("Import has been concluded. Thank you for using SDDC Import/Export for VMware Cloud on AWS.")
 
     if no_intent_found == True:

@@ -230,6 +230,11 @@ class VMCImportExport:
         self.dfw_import_filename    = self.loadConfigFilename(config,"importConfig","dfw_import_filename")
         self.dfw_detailed_import_filename = self.loadConfigFilename(config,"importConfig","dfw_detailed_import_filename")
 
+        #Advanced Firewall
+        self.nsx_adv_fw_export      = self.loadConfigFlag(config,"exportConfig","nsx_adv_fw_export")
+        self.nsx_adv_fw_import      = self.loadConfigFlag(config,"importConfig","nsx_adv_fw_import")
+        self.nsx_adv_fw_allow_enable    = self.loadConfigFlag(config,"importConfig","nsx_adv_fw_allow_enable")
+
         #SDDC Info
         self.sddc_info_filename     = self.loadConfigFilename(config,"exportConfig","sddc_info_filename")
         self.sddc_info_hide_sensitive_data = self.loadConfigFlag(config,"exportConfig","sddc_info_hide_sensitive_data")
@@ -1416,6 +1421,41 @@ class VMCImportExport:
                 json.dump(cgw_groups, outfile,indent=4)
 
             return True
+
+    def enable_advanced_firewall_dest(self) -> bool:
+        """Enable the NSX advanced firewall in the destination SDDC"""
+        self.check_access_token_expiration()
+        myURL = (self.strProdURL  + f'/vmc/skynet/api/orgs/{self.dest_org_id}/sddcs/{self.dest_sddc_id}/nsx-advanced-addon?enable=true')
+        myHeader = {"Authorization":"Bearer " + self.access_token}
+        if self.import_mode == "live":
+            response = requests.post(myURL,headers=myHeader)
+            if response is None or (response.status_code != 200 and response.status_code != 201 and response.status_code != 202):
+                self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+                print(f'API Call Status {response.status_code}, text:{response.text}')
+                return False
+            else:
+                print(f'Enabled NSX Advanced Firewall in dest SDDC {self.dest_sddc_id}')
+        else:
+            print(f'TEST MODE - Would have enabled NSX Advanced Firewall in SDDC {self.dest_sddc_id}')
+
+        return True
+
+    def import_advanced_firewall(self):
+        self.check_access_token_expiration()
+        if self.dest_sddc_enable_nsx_advanced_addon is False:
+            if self.nsx_adv_fw_allow_enable is True:
+                print("nsx_adv_fw_allow_enable set to True, attempting to enable the NSX Advanced Firewall in the destination SDDC...")
+                retval = self.enable_advanced_firewall_dest()
+                if retval is False:
+                    print("ERROR - Failed to enable NSX Advanced Firewall - unable to import")
+                    return
+
+                print("NSX advanced firewall has been enabled.")
+            else:
+                print("ERROR - Unable to import advanced firewall config - the advanced firewall add-on is disabled in the destination SDDC. You can try to automatically enable the feature with the `nsx_adv_fw_allow_enable` flag in config.ini")
+                return
+
+        print("Feature not implemented")
 
     def importSDDCCGWRule(self):
         """Import all CGW Rules from a JSON file"""
