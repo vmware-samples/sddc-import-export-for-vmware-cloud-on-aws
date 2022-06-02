@@ -18,6 +18,12 @@ import re
 import time
 import sys
 
+import aiohttp
+import asyncio
+from aiohttp import ClientSession
+from requests.exceptions import HTTPError
+import platform
+
 from pathlib import Path
 from prettytable import PrettyTable
 from zipfile import ZipFile
@@ -78,6 +84,7 @@ class VMCImportExport:
         self.convertedServiceRolePayload = ""
         self.RoleSyncSourceUserEmail = ""
         self.RoleSyncDestUserEmails = {}
+        self.max_concurrent_api_calls = 40  # Maximum concurrent async API calls
         self.ConfigLoader()
 
     def ConfigLoader(self):
@@ -242,6 +249,9 @@ class VMCImportExport:
         #CSP
         self.RoleSyncSourceUserEmail = config.get("exportConfig","role_sync_source_user_email")
         self.RoleSyncDestUserEmails = config.get("importConfig","role_sync_dest_user_emails").split('|')
+
+        # Async config
+        self.max_concurrent_api_calls = int(config.get("importConfig","max_concurrent_api_calls"))
 
     def purgeJSONfiles(self):
         """Removes the JSON export files before a new export"""
@@ -1008,6 +1018,8 @@ class VMCImportExport:
             json.dump(vpn_l3_config, outfile,indent=4)
         return True
 
+    def import_cgw_networks_async(self):
+        print("hi")
     def importCGWNetworks(self):
         """Imports CGW network semgements from a JSON file"""
 
@@ -1111,6 +1123,74 @@ class VMCImportExport:
             else:
                 print(f'TEST MODE: Would have added binding {payload["display_name"]}')
 
+    async def services_async_main(self,services):
+        sema = asyncio.Semaphore(self.max_concurrent_api_calls)
+        tasks = []
+        async with aiohttp.ClientSession(raise_for_status=True) as session:
+            for service in services:
+                if service["_create_user"]!= "admin" and service["_create_user"]!="admin;admin" and service["_create_user"]!="system":
+                    tasks.append(self.service_async_import(service,session,sema))
+            await asyncio.gather(*tasks)
+
+    async def service_async_import(self,service,session,sema):
+        """Import"""
+        self.check_access_token_expiration()
+        json_data = {}
+        if self.import_mode == "live":
+            json_data["id"] = service["id"]
+            json_data["resource_type"]=service["resource_type"]
+            json_data["display_name"]=service["display_name"]
+            json_data["service_type"]=service["service_type"]
+            service_entries = []
+            for entry in service["service_entries"]:
+                #print("-------------------------------------------------")
+                #print("entry")
+                modified_entry = {}
+                for k in entry:
+                    #print("-------------------------------------------------")
+                    #print("sub_entry")
+                    #print(k)
+                    if k != "path"  and k != "relative_path" and k != "overridden" and k != "_create_time" and k != "_create_user" and k != "_last_modified_time" and k != "_last_modified_user" and k != "_system_owned" and k != "_protection" and k != "_revision":
+                        modified_entry[k] = entry[k]
+                service_entries.append(modified_entry)
+            json_data["service_entries"]=service_entries
+            myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+            myURL = self.proxy_url + "/policy/api/v1/infra/services/" + service["id"]
+
+            try:
+                async with sema:
+                    if self.sync_mode is True:
+                        response = await session.request(method='Patch', url=myURL, headers=myHeader, json=json_data, ssl=False)
+                    else:
+                        response = await session.request(method='Put', url=myURL, headers=myHeader, json=json_data, ssl=False)
+                    if response.status == 200:
+                        print(f'Added {json_data["display_name"]}')
+                    else:
+                        print( f'API Call Status {response.status}, text:{response.text}')
+            except HTTPError as http_err:
+                print(f"HTTP error occurred: {http_err}\n")
+            except Exception as err:
+                print(f'An error occurred: {err}\n')
+        else:
+            print("TEST MODE - Service",service["display_name"],"would have been imported.")
+
+    def import_sddc_services_async(self):
+        fname = self.import_path / self.services_filename
+        try:
+            with open(fname) as filehandle:
+                services = json.load(filehandle)
+        except:
+            print('Import failed - unable to open',fname)
+            return
+
+        if platform.system()=='Windows':
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+        start_time = datetime.datetime.now()
+        print(f'Asyn services import started at {start_time}, max concurrent API calls: {self.max_concurrent_api_calls}')
+        asyncio.run(self.services_async_main(services))
+        end_time = datetime.datetime.now()
+        print(f'Async services import ended at {end_time}, time elapsed {end_time - start_time}')
 
     def importSDDCServices(self):
         """Import all services from a JSON file"""

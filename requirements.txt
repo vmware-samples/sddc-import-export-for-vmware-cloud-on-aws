@@ -7,4 +7,5 @@ requests==2.26.0
 urllib3==1.26.6
 wcwidth==0.2.5
 boto3==1.16.39
+aiohttp=3.8.1
 #git+https://github.com/vmware/vsphere-automation-sdk-python.git@v7.0.2.0

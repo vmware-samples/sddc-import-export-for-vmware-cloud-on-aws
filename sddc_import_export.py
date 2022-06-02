@@ -51,6 +51,7 @@ from pathlib import Path
 from prettytable import PrettyTable
 import json
 import os
+import datetime
 #import vcenter
 from VMCImportExport import VMCImportExport
 import urllib3
@@ -723,7 +724,10 @@ def main(args):
 
         if ioObj.services_import is True:
             print("Beginning Services import...")
-            ioObj.importSDDCServices()
+            #print(f'Synchronous process started at {datetime.datetime.now()}')
+            #ioObj.importSDDCServices()
+            #print(f'Synchronous process ended at {datetime.datetime.now()}')
+            ioObj.import_sddc_services_async()
         else:
             print("Warning - Service import set to False, skipping...")
 
