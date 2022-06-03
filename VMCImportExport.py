@@ -1596,6 +1596,90 @@ class VMCImportExport:
                 payload = {}
         return True
 
+    def import_sddc_cgw_groups_async(self):
+        fname = self.import_path / self.cgw_groups_filename
+        try:
+            with open(fname) as filehandle:
+                groups = json.load(filehandle)
+        except:
+            print('Import failed - unable to open',fname)
+            return False
+
+        if platform.system()=='Windows':
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+        print(f'CGW group async started at {datetime.datetime.now()}')
+        asyncio.run(self.import_sddc_cgw_group_async_main(groups))
+        print(f'CGW group async ended at {datetime.datetime.now()}')
+
+    async def import_sddc_cgw_group_async_main(self, groups):
+        sema = asyncio.Semaphore(self.max_concurrent_api_calls)
+        tasks = []
+        async with aiohttp.ClientSession(raise_for_status=False) as session:
+            for group in groups:
+                skip_vm_expression = False
+                skip_group = False
+                for e in self.cgw_groups_import_exclude_list:
+                    m = re.match(e,group["display_name"])
+                    if m:
+                        print(group["display_name"],'skipped - matches exclusion regex', e)
+                        skip_group = True
+                        break
+                if skip_group is True:
+                    continue
+                if group["_create_user"]!= "admin" and group["_create_user"]!="admin;admin":
+                    tasks.append(self.import_sddc_cgw_group_async(group,session,sema))
+            await asyncio.gather(*tasks)
+
+    async def import_sddc_cgw_group_async(self, group, session, sema):
+        self.check_access_token_expiration()
+
+        payload = {}
+        skip_vm_expression = False
+        payload["id"]=group["id"]
+        payload["resource_type"]=group["resource_type"]
+        payload["display_name"]=group["display_name"]
+
+        if self.import_mode == "live":
+            myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+            myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups/" + group["id"]
+            if "expression" in group:
+                group_expression = group["expression"]
+                for item in group_expression:
+                    if item["resource_type"] == "ExternalIDExpression":
+                        skip_vm_expression = True
+                        msg = f'CGW Group {group["display_name"]} cannot be imported as it relies on VM external ID.'
+                        print(msg)
+                        path = "/infra/domains/cgw/groups/" + group["id"]
+                        self.cgw_groups_import_error_dict[path] = { "display_name": payload["display_name"] , "error_message": msg }
+                        break
+
+            if skip_vm_expression == False:
+                payload["expression"]=group["expression"]
+                json_data = json.dumps(payload)
+                try:
+                    async with sema:
+                        #print(f'Hdr: {myHeader}')
+                        #print(f'Url: {myURL}')
+                        #print(f'Json BEFORE FUNCTION: {json_data}')
+                        if self.sync_mode is True:
+                            print("B4 RESPONSE")
+                            response = await session.patch(url=myURL, headers=myHeader, json=json_data, ssl=False)
+                        else:
+                            response = await session.put(url=myURL, headers=myHeader, json=json_data, ssl=False)
+                        if response.ok:
+                            print(f'CGW group {json_data["display_name"]} has been imported.')
+                        else:
+                            print("IN ERRR")
+                            print( f'API Call Status:{response.text}')
+                except aiohttp.ClientResponseError as e:
+                    print(e.status, e.request_info)
+                #except HTTPError as http_err:
+                #    print(f'HTTP error occurred: {http_err}\n')
+                #except Exception as err:
+                #    print(f'An error occurred: {err}\n')
+        else:
+                print("TEST MODE - CGW Group " + payload["display_name"] + " would have been imported.")
 
     def importSDDCCGWGroup(self):
         """Import all CGW groups from a JSON file"""

@@ -733,7 +733,8 @@ def main(args):
 
         if ioObj.compute_groups_import is True:
             print("Beginning Compute Groups import...")
-            retval = ioObj.importSDDCCGWGroup()
+            #retval = ioObj.importSDDCCGWGroup()
+            retval = ioObj.import_sddc_cgw_groups_async()
             if len(ioObj.cgw_groups_import_error_dict) > 0:
                 print("Error summary:")
                 for key in ioObj.cgw_groups_import_error_dict:
