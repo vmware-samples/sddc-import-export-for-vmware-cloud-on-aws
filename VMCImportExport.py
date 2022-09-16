@@ -166,6 +166,20 @@ class VMCImportExport:
         self.mgw_import_exclude_list = self.loadConfigRegex(config,"importConfig","mgw_import_exclude_list",'|')
         self.mgw_groups_import_exclude_list = self.loadConfigRegex(config,"importConfig","mgw_groups_import_exclude_list",'|')
 
+        #Multi Tier-1 Compute Gateways
+        self.mcgw_export = self.loadConfigFlag(config, "exportConfig", "mcgw_export")
+        self.mcgw_export_filename = self.loadConfigFilename(config, "exportConfig", "mcgw_export_filename")
+        self.mcgw_static_routes_export = self.loadConfigFlag(config, "exportConfig", "mcgw_static_routes_export")
+        self.mcgw_static_routes_export_filename = self.loadConfigFilename(config, "exportConfig", "mcgw_static_routes_export_filename")
+        self.mcgw_fw_export = self.loadConfigFlag(config, "exportConfig", "mcgw_fw_export")
+        self.mcgw_fw_export_filename = self.loadConfigFilename(config, "exportConfig", "mcgw_fw_export_filename")
+        self.mcgw_import = self.loadConfigFlag(config, "importConfig", "mcgw_import")
+        self.mcgw_import_filename = self.loadConfigFilename(config, "importConfig", "mcgw_import_filename")
+        self.mcgw_static_routes_import = self.loadConfigFlag(config, "importConfig", "mcgw_static_route_import")
+        self.mcgw_static_route_import_filename = self.loadConfigFilename(config, "importConfig", "mcgw_static_route_import_filename")
+        self.mcgw_fw_import = self.loadConfigFlag(config, "importConfig", "mcgw_fw_import")
+        self.mcgw_fw_import_filename = self.loadConfigFilename(config, "importConfig", "mcgw_fw_import_filename")
+
         #Network segments - CGW
         self.network_export              = self.loadConfigFlag(config,"exportConfig","network_export")
         self.network_export_filename     = self.loadConfigFilename(config,"exportConfig","network_export_filename")
@@ -636,6 +650,95 @@ class VMCImportExport:
             json.dump(mgw_groups, outfile,indent=4)
         return True
 
+    def export_mcgw_config(self):
+        """Exports Multi-T1 CGW configuration to a JSON file"""
+        my_url = f'{self.proxy_url}/policy/api/v1/search?query=resource_type:Tier1'
+        response = self.invokeCSPGET(my_url)
+        if response is None or response.status_code != 200:
+            return False
+        json_response = response.json()
+        #print(json.dumps(json_response, indent=2))
+        search_results = json_response['results']
+        mcgw_list = []
+        for i in search_results:
+            if i['id'] == 'mgw':
+                pass
+            elif i['id'] == 'cgw':
+                pass
+            else:
+                mcgw_list.append(i['id'])
+        mcgw_json = {}
+        for x in mcgw_list:
+            my_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{x}'
+            response = self.invokeCSPGET(my_url)
+            if response is None or response.status_code != 200:
+                return False
+            json_response = response.json()
+            mcgw_json[x] = json_response
+        fname = self.export_path / self.mcgw_export_filename
+        with open(fname, 'w') as outfile:
+            json.dump(mcgw_json, outfile, indent=4)
+        return True
+
+    def export_mcgw_static_routes(self):
+        """Exports any static routes configured on a multi-T1 CGW to a JSON file"""
+        my_url = f'{self.proxy_url}/policy/api/v1/search?query=resource_type:Tier1'
+        response = self.invokeCSPGET(my_url)
+        if response is None or response.status_code != 200:
+            return False
+        json_response = response.json()
+        search_results = json_response['results']
+        mcgw_list = []
+        for i in search_results:
+            if i['id'] == 'mgw':
+                pass
+            elif i['id'] == 'cgw':
+                pass
+            else:
+                mcgw_list.append(i['id'])
+        mcgw_staticroutes_json = {}
+        for x in mcgw_list:
+            my_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{x}/static-routes'
+            response = self.invokeCSPGET(my_url)
+            if response is None or response.status_code != 200:
+                return False
+            json_response = response.json()
+            mcgw_staticroutes_json[x] = json_response
+        fname = self.export_path / self.mcgw_static_routes_export_filename
+        with open(fname, 'w') as outfile:
+            json.dump(mcgw_staticroutes_json, outfile, indent=4)
+        return True
+
+    def export_mcgw_fw(self):
+        """Exports all North/South firewall policies"""
+        my_url = f'{self.proxy_url}/policy/api/v1/search?query=resource_type:GatewayPolicy'
+        response = self.invokeCSPGET(my_url)
+        if response is None or response.status_code != 200:
+            return False
+        json_response = response.json()
+        search_results = json_response['results']
+        mcgw_policy_list = []
+        for i in search_results:
+            if i['id'] == 'default':
+                pass
+            elif i['parent_path'] == '/infra/domains/default':
+                pass
+            else:
+                mcgw_policy_list.append(i['id'])
+        mcgw_fw_policy_json = {}
+        for x in mcgw_policy_list:
+            # print(json.dumps(x, indent=2))
+            my_url = f'{self.proxy_url}/policy/api/v1/infra/domains/cgw/gateway-policies/{x}'
+            response = self.invokeCSPGET(my_url)
+            if response is None or response.status_code != 200:
+                return False
+            json_response = response.json()
+            mcgw_fw_policy_json[x] = json_response
+        fname = self.export_path / self.mcgw_fw_export_filename
+        with open(fname, 'w') as outfile:
+            json.dump(mcgw_fw_policy_json, outfile, indent=4)
+        return True
+
     def exportSDDCDFWRule(self):
         """Exports the DFW firewall rules to a JSON file"""
         myURL = (self.proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies")
@@ -1019,7 +1122,6 @@ class VMCImportExport:
         except:
             print('Import failed - unable to open',fname)
             return
-
         importResults = {}
         irKey = 0
         for n in networks:
@@ -1034,7 +1136,6 @@ class VMCImportExport:
                 continue
             result = ""
             resultNote = ""
-
             json_data = {}
             json_data["id"] = n['id']
             json_data["type"] = n['type']
@@ -1045,10 +1146,8 @@ class VMCImportExport:
             else:
                 result = "FAIL"
                 resultNote += "No subnets found."
-
             if "advanced_config" in n:
                 json_data["advanced_config"] = n["advanced_config"]
-
             if self.import_mode == "live":
                 myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
                 myURL = (self.proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments/" + n['id'])
@@ -1122,7 +1221,6 @@ class VMCImportExport:
         except:
             print('Import failed - unable to open',fname)
             return
-
         for service in services:
             json_data = {}
             if service["_create_user"]!= "admin" and service["_create_user"]!="admin;admin" and service["_create_user"]!="system":
@@ -1160,6 +1258,139 @@ class VMCImportExport:
                         print( f'API Call Status {response.status_code}, text:{response.text}')
                 else:
                     print("TEST MODE - Service",service["display_name"],"would have been imported.")
+
+    def import_mcgw(self):
+        """Import Tier-1 gateways from a JSON file"""
+        self.check_access_token_expiration()
+        fname = self.import_path / self.mcgw_import_filename
+        try:
+            with open(fname) as filehandle:
+                mcgws = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {fname}')
+            return
+        for mcgw in mcgws.values():
+            json_data = {}
+            if self.import_mode == "live":
+                json_data['id'] = mcgw['id']
+                json_data['display_name'] = mcgw['display_name']
+                json_data['type'] = mcgw['type']
+                if 'dhcp_config_paths' in mcgw:
+                    json_data['dhcp_config_paths'] = mcgw['dhcp_config_paths']
+            my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.access_token}
+            my_url = self.proxy_url + '/policy/api/v1/infra/tier-1s/' + mcgw['id']
+            if self.sync_mode is True:
+                response = requests.patch(my_url, headers=my_header, json=json_data)
+            else:
+                response = requests.put(my_url, headers=my_header, json=json_data)
+            if response.status_code == 200:
+                result = "SUCCESS"
+                print('Added {}'.format(json_data['display_name']))
+            else:
+                result = "FAIL"
+                print(f'API Call Status {response.status_code}, text:{response.text}')
+
+    def import_mcgw_static_routes(self):
+        """Import Tier-1 Gateway static routes from a JSON file"""
+        self.check_access_token_expiration()
+        fname = self.import_path / self.mcgw_static_route_import_filename
+        try:
+            with open(fname) as filehandle:
+                routes = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {fname}')
+            return
+        if self.import_mode == 'live':
+            for route in routes.values():
+                for r in route['results']:
+                    json_data = {}
+                    json_data['display_name'] = r['display_name']
+                    json_data['id'] = r['id']
+                    json_data['network'] = r['network']
+                    json_data['next_hops'] = r['next_hops']
+                    json_data['resource_type'] = r['resource_type']
+                    path = r['path']
+                    my_header = {"Content-Type": "application/json", "Accept": "application/json",
+                                 "csp-auth-token": self.access_token}
+                    my_url = f'{self.proxy_url}/policy/api/v1{path}'
+                    if self.sync_mode is True:
+                        response = requests.patch(my_url, headers=my_header, json=json_data)
+                    else:
+                        response = requests.put(my_url, headers=my_header, json=json_data)
+                    if response.status_code == 200:
+                        result = "SUCCESS"
+                        print('Added {}'.format(json_data['display_name']))
+                    else:
+                        result = "FAIL"
+                        print(f'API Call Status {response.status_code}, text:{response.text}')
+        else:
+            print(f"TEST MODE - Tier 1 Gateway static routes would have been imported.")
+
+    def import_mcgw_fw(self):
+        """Import Tier-1 Gateway firewall policies and rules from a JSON file"""
+        self.check_access_token_expiration()
+        fname = self.import_path / self.mcgw_fw_import_filename
+        try:
+            with open(fname) as filehandle:
+                rules = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {fname}')
+            return
+        if self.import_mode == 'live':
+            for policy in rules.values():
+                # print(json.dumps(policy, indent=2))
+                # import and create the top level firewall policy
+                json_policy_data = {}
+                json_policy_data['resource_type'] = policy['resource_type']
+                json_policy_data['id'] = policy['id']
+                json_policy_data['display_name'] = policy['display_name']
+                json_policy_data['category'] = policy['category']
+                path = policy['path']
+                my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.access_token}
+                my_url = f'{self.proxy_url}/policy/api/v1{path}'
+                if self.sync_mode is True:
+                    response = requests.patch(my_url, headers=my_header, json=json_policy_data)
+                else:
+                    response = requests.put(my_url, headers=my_header, json=json_policy_data)
+                if response.status_code == 200:
+                    result = "SUCCESS"
+                    print(f'Added {json_policy_data["id"]} firewall policy')
+                else:
+                    result = "FAIL"
+                    print(f'API Call Status {response.status_code}, text:{response.text}')
+                json_rule_data = {}
+                rules = policy['rules']
+                for r in rules:
+                    # import and create firewall rules assigned to the top level policy
+                    json_rule_data['action'] = r['action']
+                    json_rule_data['id'] = r['id']
+                    json_rule_data['display_name'] = r['display_name']
+                    json_rule_data['source_groups'] = r['source_groups']
+                    json_rule_data['destination_groups'] = r['destination_groups']
+                    json_rule_data['services'] = r['services']
+                    json_rule_data['profiles'] = r['profiles']
+                    json_rule_data['scope'] = r['scope']
+                    json_rule_data['sequence_number'] = r['sequence_number']
+                    json_rule_data['direction'] = r['direction']
+                    json_rule_data['ip_protocol'] = r['ip_protocol']
+                    json_rule_data['tag'] = r['tag']
+                    path = r['path']
+                    my_header = {"Content-Type": "application/json", "Accept": "application/json",
+                                 "csp-auth-token": self.access_token}
+                    my_url = f'{self.proxy_url}/policy/api/v1{path}'
+                    if self.sync_mode is True:
+                        response = requests.patch(my_url, headers=my_header, json=json_rule_data)
+                    else:
+                        response = requests.put(my_url, headers=my_header, json=json_rule_data)
+                    if response.status_code == 200:
+                        result = "SUCCESS"
+                        print(f'Added {json_rule_data["display_name"]} firewall rule')
+                    else:
+                        result = "FAIL"
+                        print(f'API Call Status {response.status_code}, text:{response.text}')
+        else:
+            print(f"TEST MODE - Tier 1 Gateway firewall policy and rules would have been imported.")
+                
 
     def convertServiceRolePayload(self, sourcePayload: str) -> bool:
         """Converts a ServiceRole payload from its default format to the format required to add it to a User. Saves results to convertedServiceRolePayload """
@@ -2202,7 +2433,7 @@ class VMCImportExport:
         """ Gets the Reverse Proxy URL """
         self.check_access_token_expiration()
         myHeader = {'csp-auth-token': self.access_token}
-        myURL = "{}/vmc/api/orgs/{}/sddcs/{}".format(self.strProdURL, org_id, sddc_id)
+        myURL = f'{self.strProdURL}/vmc/api/orgs/{org_id}/sddcs/{sddc_id}'
         response = requests.get(myURL, headers=myHeader)
         json_response = response.json()
         try:
