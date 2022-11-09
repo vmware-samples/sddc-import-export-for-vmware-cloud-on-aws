@@ -562,6 +562,26 @@ def main(args):
         else:
             print("Multi-T1 Firewall Policy and Rules export skipped")
 
+        if ioObj.ral_export is True:
+            print('Beginning Route Aggegration list export')
+            retval = ioObj.export_ral()
+            if retval is True:
+                print("SDDC Route Aggregation list exported")
+            else:
+                print(f"SDDC Route Aggregation list export error: {ioObj.lastJSONResponse}")
+        else:
+            print("SDDC Route Aggregation list export skipped")
+
+        if ioObj.route_config_export is True:
+            print('Beginning SDDC route configuration export')
+            retval = ioObj.export_route_config()
+            if retval is True:
+                print("SDDC Route Configuration exported")
+            else:
+                print(f"SDDC Route Configuration export error: {ioObj.lastJSONResponse}")
+        else:
+            print("SDDC Route Configuration export skipped")
+
         if ioObj.network_export is True:
             print("Beginning network segments export...")
             retval = ioObj.exportSDDCCGWnetworks()
@@ -818,6 +838,16 @@ def main(args):
             if ioObj.mcgw_import is False:
                 print('Tier-1 Gateway import is set to false, this can cause import error is Tier-1 Gateway objects are missing.')
             ioObj.import_mcgw_fw()
+
+        if ioObj.ral_import is True:
+            print('Beginning import of SDDC Route Aggregation Lists...')
+            ioObj.import_ral()
+
+        if ioObj.route_config_import is True:
+            print('Beginning import of SDDC Route Configurations...')
+            if ioObj.ral_import is False:
+                print('Import of Route Configurations may be impacted by missing Route Aggregations lists')
+            ioObj.import_route_config()
 
         if ioObj.dfw_import is True:
             print("Beginning DFW import...")

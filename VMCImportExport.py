@@ -180,6 +180,16 @@ class VMCImportExport:
         self.mcgw_fw_import = self.loadConfigFlag(config, "importConfig", "mcgw_fw_import")
         self.mcgw_fw_import_filename = self.loadConfigFilename(config, "importConfig", "mcgw_fw_import_filename")
 
+        #DDC Route Aggregation Lists and Route Configurations
+        self.ral_export = self.loadConfigFlag(config, "exportConfig", "ral_export")
+        self.ral_export_filename = self.loadConfigFilename(config, "exportConfig", "ral_export_filename")
+        self.route_config_export = self.loadConfigFlag(config, "exportConfig", "route_config_export")
+        self.route_config_export_filename = self.loadConfigFilename(config, "exportConfig", "route_config_export_filename")
+        self.ral_import = self.loadConfigFlag(config, "importConfig", "ral_import")
+        self.ral_import_filename = self.loadConfigFilename(config, "importConfig", "ral_import_filename")
+        self.route_config_import = self.loadConfigFlag(config, "importConfig", "route_config_import")
+        self.route_config_import_filename = self.loadConfigFilename(config, "importConfig", "route_config_import_filename")
+
         #Network segments - CGW
         self.network_export              = self.loadConfigFlag(config,"exportConfig","network_export")
         self.network_export_filename     = self.loadConfigFilename(config,"exportConfig","network_export_filename")
@@ -739,13 +749,38 @@ class VMCImportExport:
             json.dump(mcgw_fw_policy_json, outfile, indent=4)
         return True
 
+    def export_ral(self):
+        """Exports the SDDCs Route Aggregation List(s)"""
+        my_url = f'{self.proxy_url}/cloud-service/api/v1/infra/external/route/aggregations'
+        response = self.invokeCSPGET(my_url)
+        if response is None or response.status_code != 200:
+            return False
+        json_response = response.json()
+        ral_results = json_response['results']
+        fname = self.export_path / self.ral_export_filename
+        with open(fname, 'w') as outfile:
+            json.dump(ral_results, outfile, indent=4)
+        return True
+
+    def export_route_config(self):
+        """Exports the SDDC route configuration"""
+        my_url = f'{self.proxy_url}/cloud-service/api/v1/infra/external/route/configs'
+        response = self.invokeCSPGET(my_url)
+        if response is None or response.status_code != 200:
+            return False
+        json_response = response.json()
+        route_config = json_response['results']
+        fname = self.export_path / self.route_config_export_filename
+        with open(fname, 'w') as outfile:
+            json.dump(route_config, outfile, indent=4)
+        return True
+
     def exportSDDCDFWRule(self):
         """Exports the DFW firewall rules to a JSON file"""
         myURL = (self.proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies")
         response = self.invokeVMCGET(myURL)
         if response is None or response.status_code != 200:
             return False
-
         json_response = response.json()
         sddc_DFWrules = json_response['results']
         sddc_Detailed_DFWrules = {}
@@ -756,7 +791,6 @@ class VMCImportExport:
                 return False
             cmapDetails = response.json()
             sddc_Detailed_DFWrules[cmap["id"]] = cmapDetails
-
         fname = self.export_path / self.dfw_export_filename
         fname_detailed = self.export_path / self.dfw_detailed_export_filename
         with open(fname, 'w') as outfile:
@@ -1113,7 +1147,6 @@ class VMCImportExport:
 
     def importCGWNetworks(self):
         """Imports CGW network semgements from a JSON file"""
-
         self.check_access_token_expiration()
         fname = self.import_path / self.network_import_filename
         try:
@@ -1390,7 +1423,68 @@ class VMCImportExport:
                         print(f'API Call Status {response.status_code}, text:{response.text}')
         else:
             print(f"TEST MODE - Tier 1 Gateway firewall policy and rules would have been imported.")
-                
+
+    def import_ral(self):
+        """Import SDDC Route Aggregation lists from JSON"""
+        self.check_access_token_expiration()
+        fname = self.import_path / self.ral_import_filename
+        try:
+            with open(fname) as filehandle:
+               ral = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {fname}')
+            return
+        if self.import_mode == 'live':
+            for r in ral:
+                json_data = {}
+                json_data['display_name'] = r['display_name']
+                json_data['prefixes'] = r['prefixes']
+                json_data['resource_type'] = r['resource_type']
+                json_data['id'] = r['id']
+                path = r['path']
+                # print(json.dumps(json_data, indent=2))
+                my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.access_token}
+                my_url = f'{self.proxy_url}/cloud-service/api/v1{path}'
+                response = requests.put(my_url, headers=my_header, json=json_data)
+                if response.status_code == 200:
+                    result = "SUCCESS"
+                    print(f'Added {json_data["display_name"]} route aggregation list')
+                else:
+                    result = "FAIL"
+                    print(f'API Call Status {response.status_code}, text:{response.text}')
+        else:
+            print(f'TEST Mode - Route Aggregation lists would have been imported')
+
+    def import_route_config(self):
+        """Imports SDDC route configuration from JSON"""
+        self.check_access_token_expiration()
+        fname = self.import_path / self.route_config_import_filename
+        try:
+            with open(fname) as filehandle:
+                config = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {fname}')
+            return
+        if self.import_mode == 'live':
+            for r in config:
+                json_data = {}
+                json_data['display_name'] = r['display_name']
+                json_data['resource_type'] = r['resource_type']
+                json_data['id'] = r['id']
+                json_data['aggregation_route_config'] = r['aggregation_route_config']
+                json_data['connectivity_endpoint_path'] = r['connectivity_endpoint_path']
+                my_header = {"Content-Type": "application/json", "Accept": "application/json",
+                             "csp-auth-token": self.access_token}
+                my_url = f'{self.proxy_url}/cloud-service/api/v1/infra/external/route/configs/{r["id"]}'
+                response = requests.put(my_url, headers=my_header, json=json_data)
+                if response.status_code == 200:
+                    result = "SUCCESS"
+                    print(f'Added {json_data["display_name"]} route configuration')
+                else:
+                    result = "FAIL"
+                    print(f'API Call Status {response.status_code}, text:{response.text}')
+        else:
+            print(f'TEST Mode - Route configuration would have been imported')
 
     def convertServiceRolePayload(self, sourcePayload: str) -> bool:
         """Converts a ServiceRole payload from its default format to the format required to add it to a User. Saves results to convertedServiceRolePayload """
@@ -1399,7 +1493,7 @@ class VMCImportExport:
         for servicedef in sourcePayload:
             modified_def = {}
             role = {}
-            modified_def['serviceDefinitionId'] =  servicedef['serviceDefinitionId']
+            modified_def['serviceDefinitionId'] = servicedef['serviceDefinitionId']
             roles = []
             for r in servicedef['serviceRoles']:
                 modified_role = {}
