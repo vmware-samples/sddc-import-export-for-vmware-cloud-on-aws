@@ -591,6 +591,16 @@ def main(args):
                 print("CGW export error: {}".format(ioObj.lastJSONResponse))
         else:
             print("CGW network segment export skipped.")
+        
+        if ioObj.flex_segment_export is True:
+            print("Beginning flexible segment export...")
+            retval = ioObj.export_flexible_segments()
+            if retval is True:
+                print("Flexible segment exported.")
+            else:
+                print(f"Flexible segment export error: {ioObj.lastJSONResponse}")
+        else:
+            print("Flexible segment export skipped.")
 
         if ioObj.dfw_export is True:
             print("Beginning DFW export...")
@@ -856,6 +866,12 @@ def main(args):
             if ioObj.compute_groups_import is False:
                 print('Compute groups import is set to false, this can cause import errors if compute group objects are missing.')
             ioObj.importSDDCDFWRule()
+        
+        if ioObj.flex_segment_import is True:
+            print("Beginning import of flexible segments...")
+            import_table = ioObj.import_flex_segments()
+            print("Import results:\n")
+            print(import_table)
 
         if ioObj.public_import is True:
             print("Beginning Public IP import...")

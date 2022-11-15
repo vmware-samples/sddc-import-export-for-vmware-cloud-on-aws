@@ -202,6 +202,13 @@ class VMCImportExport:
         self.network_import_max_networks = int(config.get("importConfig", "network_import_max_networks"))
         self.network_import_exclude_list = self.loadConfigRegex(config,"importConfig","network_import_exclude_list",'|')
 
+        #Flexible Segments
+        self.flex_segment_export = self.loadConfigFlag(config, "exportConfig", "flex_segment_export")
+        self.flex_segment_export_filename = self.loadConfigFilename(config, "exportConfig", "flex_segment_export_filename")
+        self.flex_segment_import = self.loadConfigFlag(config, "importConfig", "flex_segment_import")
+        self.flex_segment_import_filename = self.loadConfigFilename(config, "importConfig", "flex_segment_import_filename")
+        self.flex_segment_import_exclude_list = self.loadConfigRegex(config, "importConfig", "flex_segment_import_exclude_list", '|')
+
         #Public IP
         self.public_export           = self.loadConfigFlag(config,"exportConfig","public_export")
         self.public_export_filename  = self.loadConfigFilename(config,"exportConfig","public_export_filename")
@@ -582,7 +589,6 @@ class VMCImportExport:
         response = self.invokeVMCGET(myURL)
         if response is None or response.status_code != 200:
             return False
-
         json_response = response.json()
         cgw_networks = json_response['results']
         fname = self.export_path / self.network_export_filename
@@ -597,9 +603,8 @@ class VMCImportExport:
             fname = self.export_path / self.network_dhcp_static_binding_filename
             with open(fname, 'w') as outfile:
                 json.dump(self.CGWDHCPbindings, outfile, indent=4)
-
         return True
-
+        
     def getSDDCCGWDHCPBindings( self, segment_id: str):
         """Appends any DHCP static bindings for segment_id to the class variable CGWDHCPbindings"""
         myURL = (self.proxy_url + f'/policy/api/v1/infra/tier-1s/cgw/segments/{segment_id}/dhcp-static-binding-configs')
@@ -617,7 +622,17 @@ class VMCImportExport:
         else:
             return False
 
-
+    def export_flexible_segments(self):
+        """Exports the flexible segments to a JSON file"""
+        my_url = f'{self.proxy_url}/policy/api/v1/infra/segments'
+        response = self.invokeCSPGET(my_url)
+        json_response = response.json()
+        flex_segments = json_response['results']
+        fname = self.export_path / self.flex_segment_export_filename
+        with open (fname, 'w') as outfile:
+            json.dump(flex_segments, outfile, indent=4)
+        return True
+        
     def exportSDDCMGWRule(self):
         """Exports the MGW firewall rules to a JSON file"""
         myURL = (self.proxy_url + "/policy/api/v1/infra/domains/mgw/gateway-policies/default/rules")
@@ -638,7 +653,6 @@ class VMCImportExport:
         response = self.invokeVMCGET(myURL)
         if response is None or response.status_code != 200:
             return False
-
         json_response = response.json()
         sddc_CGWrules = json_response['results']
         fname = self.export_path / self.cgw_export_filename
@@ -1209,6 +1223,63 @@ class VMCImportExport:
         for i in importResults:
             table.add_row([importResults[i]['display_name'],importResults[i]['result'],importResults[i]['result_note'],importResults[i]['id']])
         return (table)
+    
+    def import_flex_segments(self):
+        """Imports flexible segments from a JSON file"""
+        self.check_access_token_expiration()
+        fname = self.import_path / self.flex_segment_import_filename
+        try:
+            with open (fname) as filehandle:
+                flex_segments = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {filehandle}')
+            return
+        import_results = {}
+        irKey = 0
+        for f in flex_segments:
+            skip_network = False
+            for e in self.flex_segment_import_exclude_list:
+                m = re.match(e,f['display_name'])
+                if m:
+                    print(f"{f['display_name']}, skipped - matches excluseion regex")
+                    skip_network = True
+                    break
+                if skip_network is True:
+                    continue
+                result = ""
+                result_note = ""
+                json_data = {}
+                json_data['id'] = f['id']
+                json_data['display_name'] = f['display_name']
+                json_data['connectivity_path'] = f['connectivity_path']
+                json_data['type'] = f['type']
+                json_data['resource_type'] = f['resource_type']
+                json_data['subnets'] = f['subnets']
+                json_data['advanced_config'] = f['advanced_config']
+                uri_path = f['path']
+                if self.import_mode == 'live':
+                    my_header = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token}
+                    my_url = f'{self.proxy_url}/policy/api/v1{uri_path}'
+                    if self.sync_mode is True:
+                        response = requests.patch(my_url, headers = my_header, json = json_data)
+                    else:
+                        response = requests.put(my_url, headers = my_header, json = json_data)
+                    if response.status_code == 200:
+                        result = "SUCCESS"
+                        print(f'Segment {f["display_name"]} has been imported')
+                    else:
+                        result = "FAIL"
+                        result_note += f'API call status {response.status_code}, text:{response.text}'
+                else:
+                    result = "TEST"
+                    result_note += f'TEST Mode, no changes made. {f["display_name"]} would have been imported'
+                current_result = {'id':f['id'], 'display_name':f['display_name'], 'result':result, 'result_note':result_note}
+                import_results[irKey] = current_result
+                irKey += 1
+        table = PrettyTable(['Display Name', 'Result', 'Result Note', 'Segment ID'])
+        for i in import_results:
+            table.add_row([import_results[i]['display_name'], import_results[i]['result'], import_results[i]['result_note'], import_results[i]['id']])
+        return table
 
     def importCGWDHCPStaticBindings(self):
         self.check_access_token_expiration()
