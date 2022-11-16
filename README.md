@@ -216,10 +216,16 @@ If all of the export options are enabled, this will export a set of files:
 -	cgw.json
 -   dfw_details.json
 -   dfw.json
+-   flex_seg.json
+-   mcgw.json
+-   mcgw-fw.json
+-   mcgw_static_routes.json
 -	mgw_groups.json
 -	mgw.json
 -	natrules.json
 -	public.json
+-   ral.json
+-   route_config.json
 -   s3-service_access.json
 -   sddc_info.json
 -   service_access.json
