@@ -60,8 +60,7 @@ If you know git, clone the repo with
 ```bash
 git clone https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws.git
 ```
-
-If you don't know git, you can save [VMCImportExport.py](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/VMCImportExport.py), [vcenter.py](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/vcenter.py) , and  [sddc_import_export.py](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/sddc_import_export.py) to a directory. Then create a subdirectory named [config_ini](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/tree/main/config_ini) and place [config.ini](https://github.com/vmware-samples/sddc-import-export-for-vmware-cloud-on-aws/blob/main/config_ini/config.ini) in the subdirectory. Then add a subdirectory named 'json'.
+If you don't know git, you can download the code from the [Flings site](https://flings.vmware.com/sddc-import-export-for-vmware-cloud-on-aws)
 
 ### 1.3.3. Install Python modules and packages
 
@@ -76,6 +75,8 @@ python -m pip install -r requirements.txt
 If you get pip installation errors complaining about being unable to install `git+https://github.com/vmware/vsphere-automation-sdk-python.git@v7.0.2.0`, and you don't need to use the vCenter folder export feature, you can do the following: 
 - Remove line 10 in requirements.txt `git+https://github.com/vmware/vsphere-automation-sdk-python.git@v7.0.2.0`
 - Comment out line 54 in sddc_import_export.py `import vcenter`
+
+You must uncomment these lines in order to use the vCenter folder export feature. Installing the required library requires you to have git installed on your local system.
 
 ### 1.3.4. Update vmc.ini
 
@@ -179,7 +180,7 @@ aws_s3_export_bucket = ""
 The aws.ini configuration can also be passed via command line. Use sddc_import_export --help for syntax.
 
 ### 1.3.7. Update vcenter.ini (optional)
-If you want to use the optional feature to sync your on-prem vCenter folder structure to VMC, you must update vcenter.ini with the appropriate URLs, credentials, and Datacenter name. The tool can only export and import a single datacenter object.
+If you want to use the optional feature to sync your on-prem vCenter folder structure to VMC, you must update vcenter.ini with the appropriate URLs, credentials, and Datacenter name. The tool can only export and import a single datacenter object. The required libraries are commented out by default in `requirements.txt`, and line 54 of `sddc_import_export.py` is also commented out `import vmc`. You must uncomment both lines and run the requirements.txt installation again for dependencies. This library is dependent on git being installed on your local system.
 
 ```
 [vCenterConfig]
@@ -215,10 +216,16 @@ If all of the export options are enabled, this will export a set of files:
 -	cgw.json
 -   dfw_details.json
 -   dfw.json
+-   flex_seg.json
+-   mcgw.json
+-   mcgw-fw.json
+-   mcgw_static_routes.json
 -	mgw_groups.json
 -	mgw.json
 -	natrules.json
 -	public.json
+-   ral.json
+-   route_config.json
 -   s3-service_access.json
 -   sddc_info.json
 -   service_access.json
