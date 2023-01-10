@@ -1,11 +1,9 @@
 # SDDC Import/Export for VMware Cloud on AWS
 
-
 ################################################################################
-### Copyright 2020-2021 VMware, Inc.
+### Copyright 2020-2023 VMware, Inc.
 ### SPDX-License-Identifier: BSD-2-Clause
 ################################################################################
-
 
 import configparser                     # parsing config file
 import datetime
@@ -22,13 +20,13 @@ from pathlib import Path
 from prettytable import PrettyTable
 from zipfile import ZipFile
 
+import vmc_auth
+
 class VMCImportExport:
     """A class to handle importing and exporting portions of a VMC SDDC"""
 
     def __init__(self,configPath="./config_ini/config.ini", vmcConfigPath="./config_ini/vmc.ini", awsConfigPath="./config/aws.ini", vCenterConfigPath="./config_ini/vcenter.ini"):
-        self.access_token = None
-        self.access_token_expiration = None
-        self.activeRefreshToken = None
+        self.vmc_auth = None
         self.proxy_url = None
         self.proxy_url_short = None
         self.lastJSONResponse = None
@@ -98,6 +96,7 @@ class VMCImportExport:
         else:
             self.strProdURL               = vmcConfig.get("vmcConfig", "strProdURL")
             self.strCSPProdURL            = vmcConfig.get("vmcConfig", "strCSPProdURL")
+        self.vmc_auth = vmc_auth.VMCAuth(strCSPProdURL=self.strCSPProdURL)
         self.source_refresh_token     = vmcConfig.get("vmcConfig", "source_refresh_token")
         self.source_org_id            = vmcConfig.get("vmcConfig", "source_org_id")
         self.source_sddc_id           = vmcConfig.get("vmcConfig", "source_sddc_id")
@@ -406,7 +405,7 @@ class VMCImportExport:
         return True
 
     def importOnPremServices(self):
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         """Import all services from a JSON file"""
         fname = self.import_path / self.services_filename
         try:
@@ -437,7 +436,7 @@ class VMCImportExport:
                                 modified_entry[k] = entry[k]
                         service_entries.append(modified_entry)
                     json_data["service_entries"]=service_entries
-                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                     myURL = self.proxy_url + "/policy/api/v1/infra/services/" + service["id"]
                     #print(myURL)
                     #print(json_data)
@@ -457,7 +456,7 @@ class VMCImportExport:
     def importOnPremGroup(self):
         """Import all CGW groups from a JSON file"""
 
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.cgw_groups_filename
         try:
             with open(fname) as filehandle:
@@ -482,7 +481,7 @@ class VMCImportExport:
             payload["resource_type"]=group["resource_type"]
             payload["display_name"]=group["display_name"]
             if self.import_mode == "live":
-                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                 myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups/" + group["id"]
                 if "expression" in group:
                     group_expression = group["expression"]
@@ -511,7 +510,7 @@ class VMCImportExport:
     def importOnPremDFWRule(self):
         """Import all DFW Rules from a JSON file"""
 
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.dfw_import_filename
         fname_detailed = self.import_path / self.dfw_detailed_import_filename
         try:
@@ -537,7 +536,7 @@ class VMCImportExport:
                 payload["sequence_number"] = cmap["sequence_number"]
                 payload["stateful"] = cmap["stateful"]
                 if self.import_mode == 'live':
-                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                     myURL = self.proxy_url_short + "/policy/api/v1/infra/domains/cgw/security-policies/" + cmap["id"]
                     json_data = json.dumps(payload)
                     if self.sync_mode is True:
@@ -568,7 +567,7 @@ class VMCImportExport:
 
                     if self.import_mode == 'live':
                         myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + cmap["id"] + "/rules/" + commEnt["id"]
-                        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                         json_data = json.dumps(payload)
                         if self.sync_mode is True:
                             response = requests.patch(myURL,headers=myHeader,data=json_data)
@@ -816,7 +815,7 @@ class VMCImportExport:
     def importSDDCDFWRule(self):
         """Import all DFW Rules from a JSON file"""
 
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.dfw_import_filename
         fname_detailed = self.import_path / self.dfw_detailed_import_filename
         try:
@@ -841,7 +840,7 @@ class VMCImportExport:
             payload["sequence_number"] = cmap["sequence_number"]
             payload["stateful"] = cmap["stateful"]
             if self.import_mode == 'live':
-                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                 myURL = self.proxy_url_short + "/policy/api/v1/infra/domains/cgw/security-policies/" + cmap["id"]
                 json_data = json.dumps(payload)
                 if self.sync_mode is True:
@@ -868,7 +867,7 @@ class VMCImportExport:
                 payload["disabled"] = commEnt["disabled"]
                 if self.import_mode == 'live':
                     myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/security-policies/" + cmap["id"] + "/rules/" + commEnt["id"]
-                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                     json_data = json.dumps(payload)
                     if self.sync_mode is True:
                         response = requests.patch(myURL,headers=myHeader,data=json_data)
@@ -1112,7 +1111,7 @@ class VMCImportExport:
 
     def getVPNl3sensitivedata(self,l3vpnid):
         """ Retrieve sensitive data such as IPSEC preshared keys from an L3VPN configuration"""
-        myHeader = {'csp-auth-token': self.access_token}
+        myHeader = {'csp-auth-token': self.vmc_auth.access_token}
         myURL = (self.proxy_url_short + f'/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{l3vpnid}?action=show_sensitive_data')
         try:
             response = requests.get(myURL, headers=myHeader)
@@ -1161,7 +1160,7 @@ class VMCImportExport:
 
     def importCGWNetworks(self):
         """Imports CGW network semgements from a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.network_import_filename
         try:
             with open(fname) as filehandle:
@@ -1196,7 +1195,7 @@ class VMCImportExport:
             if "advanced_config" in n:
                 json_data["advanced_config"] = n["advanced_config"]
             if self.import_mode == "live":
-                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                 myURL = (self.proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments/" + n['id'])
                 if self.sync_mode is True:
                     response = requests.patch(myURL, headers=myHeader, json=json_data)
@@ -1226,7 +1225,7 @@ class VMCImportExport:
     
     def import_flex_segments(self):
         """Imports flexible segments from a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.flex_segment_import_filename
         try:
             with open (fname) as filehandle:
@@ -1258,7 +1257,7 @@ class VMCImportExport:
                 json_data['advanced_config'] = f['advanced_config']
                 uri_path = f['path']
                 if self.import_mode == 'live':
-                    my_header = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token}
+                    my_header = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token}
                     my_url = f'{self.proxy_url}/policy/api/v1{uri_path}'
                     if self.sync_mode is True:
                         response = requests.patch(my_url, headers = my_header, json = json_data)
@@ -1282,7 +1281,7 @@ class VMCImportExport:
         return table
 
     def importCGWDHCPStaticBindings(self):
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.network_dhcp_static_binding_filename
         try:
             with open(fname) as filehandle:
@@ -1299,7 +1298,7 @@ class VMCImportExport:
                     payload[x] = binding[x]
 
             if self.import_mode == 'live':
-                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                 myURL = self.proxy_url + "/policy/api/v1" +  binding['path']
                 if self.sync_mode is True:
                     response = requests.patch(myURL, headers=myHeader, json=payload)
@@ -1317,7 +1316,7 @@ class VMCImportExport:
 
     def importSDDCServices(self):
         """Import all services from a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.services_filename
         try:
             with open(fname) as filehandle:
@@ -1346,7 +1345,7 @@ class VMCImportExport:
                                 modified_entry[k] = entry[k]
                         service_entries.append(modified_entry)
                     json_data["service_entries"]=service_entries
-                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                     myURL = self.proxy_url + "/policy/api/v1/infra/services/" + service["id"]
                     #print(myURL)
                     #print(json_data)
@@ -1365,7 +1364,7 @@ class VMCImportExport:
 
     def import_mcgw(self):
         """Import Tier-1 gateways from a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.mcgw_import_filename
         try:
             with open(fname) as filehandle:
@@ -1381,7 +1380,7 @@ class VMCImportExport:
                 json_data['type'] = mcgw['type']
                 if 'dhcp_config_paths' in mcgw:
                     json_data['dhcp_config_paths'] = mcgw['dhcp_config_paths']
-            my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.access_token}
+            my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
             my_url = self.proxy_url + '/policy/api/v1/infra/tier-1s/' + mcgw['id']
             if self.sync_mode is True:
                 response = requests.patch(my_url, headers=my_header, json=json_data)
@@ -1396,7 +1395,7 @@ class VMCImportExport:
 
     def import_mcgw_static_routes(self):
         """Import Tier-1 Gateway static routes from a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.mcgw_static_route_import_filename
         try:
             with open(fname) as filehandle:
@@ -1415,7 +1414,7 @@ class VMCImportExport:
                     json_data['resource_type'] = r['resource_type']
                     path = r['path']
                     my_header = {"Content-Type": "application/json", "Accept": "application/json",
-                                 "csp-auth-token": self.access_token}
+                                 "csp-auth-token": self.vmc_auth.access_token}
                     my_url = f'{self.proxy_url}/policy/api/v1{path}'
                     if self.sync_mode is True:
                         response = requests.patch(my_url, headers=my_header, json=json_data)
@@ -1432,7 +1431,7 @@ class VMCImportExport:
 
     def import_mcgw_fw(self):
         """Import Tier-1 Gateway firewall policies and rules from a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.mcgw_fw_import_filename
         try:
             with open(fname) as filehandle:
@@ -1450,7 +1449,7 @@ class VMCImportExport:
                 json_policy_data['display_name'] = policy['display_name']
                 json_policy_data['category'] = policy['category']
                 path = policy['path']
-                my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.access_token}
+                my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
                 my_url = f'{self.proxy_url}/policy/api/v1{path}'
                 if self.sync_mode is True:
                     response = requests.patch(my_url, headers=my_header, json=json_policy_data)
@@ -1480,7 +1479,7 @@ class VMCImportExport:
                     json_rule_data['tag'] = r['tag']
                     path = r['path']
                     my_header = {"Content-Type": "application/json", "Accept": "application/json",
-                                 "csp-auth-token": self.access_token}
+                                 "csp-auth-token": self.vmc_auth.access_token}
                     my_url = f'{self.proxy_url}/policy/api/v1{path}'
                     if self.sync_mode is True:
                         response = requests.patch(my_url, headers=my_header, json=json_rule_data)
@@ -1497,7 +1496,7 @@ class VMCImportExport:
 
     def import_ral(self):
         """Import SDDC Route Aggregation lists from JSON"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.ral_import_filename
         try:
             with open(fname) as filehandle:
@@ -1514,7 +1513,7 @@ class VMCImportExport:
                 json_data['id'] = r['id']
                 path = r['path']
                 # print(json.dumps(json_data, indent=2))
-                my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.access_token}
+                my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
                 my_url = f'{self.proxy_url}/cloud-service/api/v1{path}'
                 response = requests.put(my_url, headers=my_header, json=json_data)
                 if response.status_code == 200:
@@ -1528,7 +1527,7 @@ class VMCImportExport:
 
     def import_route_config(self):
         """Imports SDDC route configuration from JSON"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.route_config_import_filename
         try:
             with open(fname) as filehandle:
@@ -1545,7 +1544,7 @@ class VMCImportExport:
                 json_data['aggregation_route_config'] = r['aggregation_route_config']
                 json_data['connectivity_endpoint_path'] = r['connectivity_endpoint_path']
                 my_header = {"Content-Type": "application/json", "Accept": "application/json",
-                             "csp-auth-token": self.access_token}
+                             "csp-auth-token": self.vmc_auth.access_token}
                 my_url = f'{self.proxy_url}/cloud-service/api/v1/infra/external/route/configs/{r["id"]}'
                 response = requests.put(my_url, headers=my_header, json=json_data)
                 if response.status_code == 200:
@@ -1605,9 +1604,9 @@ class VMCImportExport:
                     print('Could not find user with email ' + email)
 
     def invokeCSPGET(self,url: str) -> requests.Response:
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         try:
-            response = requests.get(url,headers= {"Authorization":"Bearer " + self.access_token})
+            response = requests.get(url,headers= {"Authorization":"Bearer " + self.vmc_auth.access_token})
             if response.status_code != 200:
                 self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
             return response
@@ -1617,8 +1616,8 @@ class VMCImportExport:
 
     def invokeVMCGET(self,url: str) -> requests.Response:
         """Invokes a VMC On AWS GET request"""
-        self.check_access_token_expiration()
-        myHeader = {'csp-auth-token': self.access_token}
+        self.vmc_auth.check_access_token_expiration()
+        myHeader = {'csp-auth-token': self.vmc_auth.access_token}
         attempts = 1
         status_code = 0
         try:
@@ -1641,8 +1640,8 @@ class VMCImportExport:
 
     def invokeVMCPUT(self, url: str,json_data: str) -> requests.Response:
         """Invokes a VMC on AWS PUT request"""
-        self.check_access_token_expiration()
-        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        self.vmc_auth.check_access_token_expiration()
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
         try:
             response = requests.put(url,headers=myHeader,data=json_data)
             if response.status_code != 200:
@@ -1654,8 +1653,8 @@ class VMCImportExport:
 
     def invokeVMCPATCH(self, url: str,json_data: str) -> requests.Response:
         """Invokes a VMC on AWS PATCH request"""
-        self.check_access_token_expiration()
-        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        self.vmc_auth.check_access_token_expiration()
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
         try:
             response = requests.patch(url,headers=myHeader,data=json_data)
             if response.status_code != 200:
@@ -1677,9 +1676,9 @@ class VMCImportExport:
                 return None
 
     def findRandomTestbedVM(self) -> str:
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         """Looks for any of the first 100 VMs available in NSX-T - used to generate realistic group members for a testbed"""
-        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
         myURL = self.proxy_url + '/policy/api/v1/search/aggregate?page_size=100'
         json_data = {"primary":{"resource_type":"VirtualMachine","filters":[{"field_names":"!tags.tag","value":"nsx_policy_internal"},{"field_names":"!display_name","value":"(\"NSX-Edge-0\" OR \"NSX-Edge-1\" OR \"NSX-Manager-0\" OR \"NSX-Manager-1\" OR \"NSX-Manager-2\" OR \"vcenter\")"}]},"related":[{"resource_type":"TransportNode OR HostNode","join_condition":"id:source.target_id","alias":"TransportNode"},{"resource_type":"VirtualNetworkInterface","join_condition":"owner_vm_id:external_id","alias":"VirtualNetworkInterface"},{"resource_type":"HostNode","join_condition":"id:host_id","alias":"HostNode","size":0},{"resource_type":"DiscoveredNode","join_condition":"external_id:$2.discovered_node_id","alias":"DiscoveredNode","size":0},{"resource_type":"ComputeManager","join_condition":"id:$3.origin_id","alias":"ComputeManager"}],"data_source":"ALL"}
         response = requests.post(myURL, headers=myHeader, data=json.dumps(json_data))
@@ -1696,8 +1695,8 @@ class VMCImportExport:
 
     def createSDDCCGWGroup(self, group_name: str, vm_name_to_add: str = None):
         """Creates a new CGW Group"""
-        self.check_access_token_expiration()
-        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        self.vmc_auth.check_access_token_expiration()
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
         myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups/" + group_name
 
         if vm_name_to_add is None:
@@ -1740,7 +1739,7 @@ class VMCImportExport:
 
     def deleteAllSDDCCGWGroups(self):
         """ Just what it sounds like - delete every single CGW group. Use with caution"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups"
         response = self.invokeVMCGET(myURL)
         if response is None or response.status_code != 200:
@@ -1762,8 +1761,8 @@ class VMCImportExport:
 
     def deleteSDDCCGWGroup(self, group_name: str):
         """Deletes a CGW Group"""
-        self.check_access_token_expiration()
-        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+        self.vmc_auth.check_access_token_expiration()
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
         myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups/" + group_name
 
         #json_data = {"display_name":group_name, "id":group_name }
@@ -1780,7 +1779,7 @@ class VMCImportExport:
     def exportSDDCCGWGroups(self):
             """Exports the CGW groups to a JSON file"""
 
-            self.check_access_token_expiration()
+            self.vmc_auth.check_access_token_expiration()
             debug_mode = False
             debug_page_size = 20
 
@@ -1820,9 +1819,9 @@ class VMCImportExport:
 
     def enable_advanced_firewall_dest(self) -> bool:
         """Enable the NSX advanced firewall in the destination SDDC"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         myURL = (self.strProdURL  + f'/vmc/skynet/api/orgs/{self.dest_org_id}/sddcs/{self.dest_sddc_id}/nsx-advanced-addon?enable=true')
-        myHeader = {"Authorization":"Bearer " + self.access_token}
+        myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
         if self.import_mode == "live":
             response = requests.post(myURL,headers=myHeader)
             if response is None or (response.status_code != 200 and response.status_code != 201 and response.status_code != 202):
@@ -1837,7 +1836,7 @@ class VMCImportExport:
         return True
 
     def import_advanced_firewall(self):
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         if self.dest_sddc_enable_nsx_advanced_addon is False:
             if self.nsx_adv_fw_allow_enable is True:
                 print("nsx_adv_fw_allow_enable set to True, attempting to enable the NSX Advanced Firewall in the destination SDDC...")
@@ -1856,7 +1855,7 @@ class VMCImportExport:
     def importSDDCCGWRule(self):
         """Import all CGW Rules from a JSON file"""
 
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.cgw_import_filename
         try:
             with open(fname) as filehandle:
@@ -1892,7 +1891,7 @@ class VMCImportExport:
                 payload["destination_groups"]=rule["destination_groups"]
                 if self.import_mode == "live":
                     json_data = json.dumps(payload)
-                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                     myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/gateway-policies/default/rules/" + rule["id"]
                     json_data = json.dumps(payload)
                     if self.sync_mode is True:
@@ -1915,7 +1914,7 @@ class VMCImportExport:
 
     def importSDDCCGWGroup(self):
         """Import all CGW groups from a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.cgw_groups_filename
         try:
             with open(fname) as filehandle:
@@ -1941,7 +1940,7 @@ class VMCImportExport:
                 payload["resource_type"]=group["resource_type"]
                 payload["display_name"]=group["display_name"]
                 if self.import_mode == "live":
-                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                     myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups/" + group["id"]
                     if "expression" in group:
                         group_expression = group["expression"]
@@ -1973,9 +1972,9 @@ class VMCImportExport:
     def importServiceAccess(self):
         """Imports SDDC Service Access config from a JSON file"""
 
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         # First, retrieve the linked VPC ID
-        myHeader = {'csp-auth-token': self.access_token}
+        myHeader = {'csp-auth-token': self.vmc_auth.access_token}
         myURL = (self.proxy_url + '/cloud-service/api/v1/infra/linked-vpcs')
         try:
             response = requests.get(myURL,headers=myHeader)
@@ -2006,7 +2005,7 @@ class VMCImportExport:
                 payload['name'] = svcaccess['name']
                 payload['enabled'] = svcaccess['enabled']
                 if self.import_mode == 'live':
-                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                     myURL = (self.proxy_url + '/cloud-service/api/v1/infra/linked-vpcs/' + linked_vpc_id + '/connected-services/' + payload['name'])
                     json_data = json.dumps(payload)
                     if self.sync_mode is True:
@@ -2024,14 +2023,14 @@ class VMCImportExport:
         return True
 
     def importVPNLocalBGP(self):
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.vpn_local_bgp_filename
         with open(fname) as filehandle:
             local_bgp = json.load(filehandle)
             payload = {}
             payload["local_as_num"] = local_bgp ["local_as_num"]
             if self.import_mode == 'live':
-                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                 myURL = self.proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp"
                 json_data = json.dumps(payload)
                 # Always using PATCH here because this BGP object always exists in any SDDC
@@ -2046,7 +2045,7 @@ class VMCImportExport:
 
 
     def importVPNBGPNeighbors(self):
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.vpn_bgp_filename
         with open(fname) as filehandle:
             bgpdata = json.load(filehandle)
@@ -2075,7 +2074,7 @@ class VMCImportExport:
                         if "overridden" in bgpentry:
                             payload["overridden"]=bgpentry["overridden"]
                         if self.import_mode == 'live':
-                            myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                            myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                             myURL = self.proxy_url + "/policy/api/v1/infra/tier-0s/vmc/locale-services/default/bgp/neighbors/" + bgpentry["id"]
                             json_data = json.dumps(payload)
                             if self.sync_mode is True:
@@ -2092,7 +2091,7 @@ class VMCImportExport:
 
 
     def importVPNTunnelProfiles(self):
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.vpn_tunnel_filename
         with open(fname) as filehandle:
             tunps = json.load(filehandle)
@@ -2109,7 +2108,7 @@ class VMCImportExport:
                     payload["resource_type"]=tunp["resource_type"]
                     payload["display_name"]=tunp["display_name"]
                     if self.import_mode == 'live':
-                        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                         myURL = self.proxy_url + "/policy/api/v1/infra/ipsec-vpn-tunnel-profiles/" + tunp["id"]
                         json_data = json.dumps(payload)
                         if self.sync_mode is True:
@@ -2125,7 +2124,7 @@ class VMCImportExport:
                         print("TEST MODE - Tunnel Profile " +  payload["display_name"] + " created by " + tunp["_create_user"] + " would have been imported.")
 
     def importVPNl2config(self):
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.vpn_l2_filename
         with open(fname) as filehandle:
             l2vpns = json.load(filehandle)
@@ -2147,7 +2146,7 @@ class VMCImportExport:
                         payload["overridden"]=l2vpn["overridden"]
                     json_data = json.dumps(payload)
                     if self.import_mode == 'live':
-                        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                         myURL = self.proxy_url + f'/policy/api/v1/infra/tier-0s/vmc/locale-services/default/l2vpn-services/default/sessions/{payload["id"]}'
                         if self.sync_mode is True:
                             l2vpnresp = requests.patch(myURL,headers=myHeader,data=json_data)
@@ -2164,7 +2163,7 @@ class VMCImportExport:
 
 
     def importVPNl3config(self):
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.vpn_l3_filename
         with open(fname) as filehandle:
             l3vpns = json.load(filehandle)
@@ -2251,7 +2250,7 @@ class VMCImportExport:
                         payload["dpd_profile_path"]=l3vpn["dpd_profile_path"]
                     json_data = json.dumps(payload)
                     if self.import_mode == 'live':
-                        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                         myURL = self.proxy_url + f'/policy/api/v1/infra/tier-0s/vmc/locale-services/default/ipsec-vpn-services/default/sessions/{payload["id"]}'
                         if self.sync_mode is True:
                             l3vpnresp = requests.patch(myURL,headers=myHeader,data=json_data)
@@ -2267,7 +2266,7 @@ class VMCImportExport:
 
     def importVPNIKEProfiles(self):
         """Import all"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.vpn_ike_filename
         with open(fname) as filehandle:
             ikeps = json.load(filehandle)
@@ -2286,7 +2285,7 @@ class VMCImportExport:
                         payload["overridden"]=ikep["overridden"]
                     json_data = json.dumps(payload)
                     if self.import_mode == 'live':
-                        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                         myURL = self.proxy_url + "/policy/api/v1/infra/ipsec-vpn-ike-profiles/" + ikep["id"]
                         if self.sync_mode is True:
                             createikepresp = requests.patch(myURL,headers=myHeader,data=json_data)
@@ -2302,7 +2301,7 @@ class VMCImportExport:
 
     def importSDDCMGWRule(self):
         """Import all MGW Rules from a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.mgw_import_filename
         try:
             with open(fname) as filehandle:
@@ -2338,7 +2337,7 @@ class VMCImportExport:
                 payload["destination_groups"]=rule["destination_groups"]
                 if self.import_mode == "live":
                     json_data = json.dumps(payload)
-                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                     myURL = self.proxy_url + "/policy/api/v1/infra/domains/mgw/gateway-policies/default/rules/" + rule["id"]
                     json_data = json.dumps(payload)
                     if self.sync_mode is True:
@@ -2353,7 +2352,7 @@ class VMCImportExport:
 
     def importSDDCMGWGroup(self):
         """Import all MGW groups from a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.mgw_groups_filename
         try:
             with open(fname) as filehandle:
@@ -2381,7 +2380,7 @@ class VMCImportExport:
                 if "expression" in group:
                     payload["expression"]=group["expression"]
                 if self.import_mode == "live":
-                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token }
+                    myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                     myURL = self.proxy_url + "/policy/api/v1/infra/domains/mgw/groups/" + group["id"]
                     json_data = json.dumps(payload)
                     if self.sync_mode is True:
@@ -2396,7 +2395,7 @@ class VMCImportExport:
 
     def exportSDDCNat(self):
         """Exports the NAT rules to a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         myURL = (self.proxy_url + "/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules")
         response = self.invokeVMCGET(myURL)
         if response is None or response.status_code != 200:
@@ -2411,7 +2410,7 @@ class VMCImportExport:
 
     def importSDDCNats(self):
         """Imports SDDC NAT from a JSON file"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.nat_import_filename
         with open(fname) as filehandle:
             nat = json.load(filehandle)
@@ -2438,7 +2437,7 @@ class VMCImportExport:
                     json_data["translated_network"] = public_ip_old_new[old_ip]
                     new_ip_name_dash = json_data["translated_network"].replace(".","-")
                     myURL = (self.proxy_url + "/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/" + (n['display_name']).replace(" ", "-") + "-" + new_ip_name_dash)
-                    myHeader = {'csp-auth-token': self.access_token}
+                    myHeader = {'csp-auth-token': self.vmc_auth.access_token}
                     response = requests.put(myURL, headers=myHeader, json=json_data)
                     json_response_status_code = response.status_code
                     print("NAT Rule " + n['display_name'] + " has been imported.")
@@ -2450,7 +2449,7 @@ class VMCImportExport:
                     json_data["service"] = n["service"]
                     new_ip_name_dash = json_data["destination_network"].replace(".","-")
                     myURL = (self.proxy_url + "/policy/api/v1/infra/tier-1s/cgw/nat/USER/nat-rules/" + (n['display_name']).replace(" ", "-") + "-" + new_ip_name_dash)
-                    myHeader = {'csp-auth-token': self.access_token}
+                    myHeader = {'csp-auth-token': self.vmc_auth.access_token}
                     response = requests.put(myURL, headers=myHeader, json=json_data)
                     json_response_status_code = response.status_code
                     print("NAT Rule " + n['display_name'] + " has been imported.")
@@ -2476,8 +2475,8 @@ class VMCImportExport:
 
     def importSDDCPublicIPs(self):
         """Import all Public IP addresses from a JSON file"""
-        self.check_access_token_expiration()
-        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.access_token}
+        self.vmc_auth.check_access_token_expiration()
+        myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token}
         proxy_url_short = (self.proxy_url).rstrip("sks-nsxt-manager")
         aDict = {}
         fname = self.import_path / self.public_import_filename
@@ -2494,7 +2493,7 @@ class VMCImportExport:
                 }
                 if self.import_mode == "live":
                     public_ip_response = requests.put(myURL, headers=myHeader, json=public_ip_request_data)
-                    myHeader = {'csp-auth-token': self.access_token}
+                    myHeader = {'csp-auth-token': self.vmc_auth.access_token}
                     myURL = (self.proxy_url + "/cloud-service/api/v1/infra/public-ips/" + public_name)
                     response = requests.get(myURL, headers=myHeader)
                     json_response = response.json()
@@ -2516,7 +2515,7 @@ class VMCImportExport:
             return aDict
 
     def importVPN(self):
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         successval = True
 
         print("Beginning IKE Profiles...")
@@ -2568,36 +2567,36 @@ class VMCImportExport:
 
         return successval
 
-    def getAccessToken(self,myRefreshToken):
-        """ Gets the Access Token using the Refresh Token """
-        self.activeRefreshToken = myRefreshToken
-        params = {'api_token': myRefreshToken}
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        response = requests.post(f'{self.strCSPProdURL}/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
-        jsonResponse = response.json()
-        #print(jsonResponse)
-        try:
-            self.access_token = jsonResponse['access_token']
-            expires_in = jsonResponse['expires_in']
-            expirestime = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
-            self.access_token_expiration = expirestime
-            print(f'Token expires at {expirestime}')
-        except:
-            self.access_token = None
-            self.access_token_expiration = None
-        return self.access_token
+    # def getAccessToken(self,myRefreshToken):
+    #     """ Gets the Access Token using the Refresh Token """
+    #     self.activeRefreshToken = myRefreshToken
+    #     params = {'api_token': myRefreshToken}
+    #     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    #     response = requests.post(f'{self.strCSPProdURL}/csp/gateway/am/api/auth/api-tokens/authorize', params=params, headers=headers)
+    #     jsonResponse = response.json()
+    #     #print(jsonResponse)
+    #     try:
+    #         self.access_token = jsonResponse['access_token']
+    #         expires_in = jsonResponse['expires_in']
+    #         expirestime = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
+    #         self.access_token_expiration = expirestime
+    #         print(f'Token expires at {expirestime}')
+    #     except:
+    #         self.access_token = None
+    #         self.access_token_expiration = None
+    #     return self.access_token
 
-    def check_access_token_expiration(self) -> None:
-        """Retrieve a new access token if it is near expiration"""
-        time_to_expire = self.access_token_expiration - datetime.datetime.now()
-        if time_to_expire.total_seconds() <= 100:
-            print('Access token expired, attempting to refresh...')
-            self.getAccessToken(self.activeRefreshToken)
+    # def check_access_token_expiration(self) -> None:
+    #     """Retrieve a new access token if it is near expiration"""
+    #     time_to_expire = self.access_token_expiration - datetime.datetime.now()
+    #     if time_to_expire.total_seconds() <= 100:
+    #         print('Access token expired, attempting to refresh...')
+    #         self.getAccessToken(self.activeRefreshToken)
 
     def getNSXTproxy(self, org_id, sddc_id):
         """ Gets the Reverse Proxy URL """
-        self.check_access_token_expiration()
-        myHeader = {'csp-auth-token': self.access_token}
+        self.vmc_auth.check_access_token_expiration()
+        myHeader = {'csp-auth-token': self.vmc_auth.access_token}
         myURL = f'{self.strProdURL}/vmc/api/orgs/{org_id}/sddcs/{sddc_id}'
         response = requests.get(myURL, headers=myHeader)
         json_response = response.json()
@@ -2711,8 +2710,8 @@ class VMCImportExport:
 
     def loadOrgData(self,orgID):
         """Download the JSON for an organization object"""
-        self.check_access_token_expiration()
-        myHeader = {'csp-auth-token': self.access_token}
+        self.vmc_auth.check_access_token_expiration()
+        myHeader = {'csp-auth-token': self.vmc_auth.access_token}
         myURL = self.strProdURL + "/vmc/api/orgs/" + orgID
         try:
             response = requests.get(myURL,headers=myHeader)
@@ -2780,8 +2779,8 @@ class VMCImportExport:
 
     def loadSDDCData(self,orgID,sddcID):
         """Download the JSON for an SDDC object"""
-        self.check_access_token_expiration()
-        myHeader = {'csp-auth-token': self.access_token}
+        self.vmc_auth.check_access_token_expiration()
+        myHeader = {'csp-auth-token': self.vmc_auth.access_token}
         myURL = self.strProdURL + "/vmc/api/orgs/" + orgID + "/sddcs/" + sddcID
         try:
             response = requests.get(myURL,headers=myHeader)
@@ -2796,7 +2795,7 @@ class VMCImportExport:
 
     def loadSDDCNSX(self, orgID, sddcID):
         """Loads SDDC URLs and credentials"""
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         myURL = self.strProdURL + f'/api/network/{orgID}/core/deployments/{sddcID}/nsx'
         response = self.invokeCSPGET(myURL)
         if response is None or response.status_code != 200:
@@ -2805,7 +2804,7 @@ class VMCImportExport:
         return response.json()
 
     def searchOrgUser(self,orgid,userSearchTerm):
-        self.check_access_token_expiration()
+        self.vmc_auth.check_access_token_expiration()
         myURL = (self.strCSPProdURL + "/csp/gateway/am/api/orgs/" + orgid + "/users/search?userSearchTerm=" + userSearchTerm)
         response = self.invokeCSPGET(myURL)
         if response is None or response.status_code != 200:
