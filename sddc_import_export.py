@@ -5,9 +5,8 @@
 
 # SDDC Import/Export for VMware Cloud on AWS
 
-
 ################################################################################
-### Copyright 2020-2021 VMware, Inc.
+### Copyright 2020-2023 VMware, Inc.
 ### SPDX-License-Identifier: BSD-2-Clause
 ################################################################################
 
@@ -188,8 +187,8 @@ def main(args):
 
     if intent_name == "rolesync":
         no_intent_found = False
-        ioObj.getAccessToken(ioObj.source_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.source_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve source access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
         print (f'Looking up template user {ioObj.RoleSyncSourceUserEmail}')
@@ -203,8 +202,8 @@ def main(args):
                 retval = ioObj.convertServiceRolePayload(template_user_roles)
                 payload = {}
                 payload = ioObj.convertedServiceRolePayload
-                ioObj.getAccessToken(ioObj.dest_refresh_token)
-                if (ioObj.access_token == ""):
+                ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
+                if (ioObj.vmc_auth.access_token == ""):
                     print("Unable to retrieve source access token. Server response:{}".format(ioObj.lastJSONResponse))
                     sys.exit()
                 if ioObj.import_mode == "live":
@@ -238,8 +237,8 @@ def main(args):
 
         print('Testbed mode:',ioObj.import_mode)
 
-        ioObj.getAccessToken(ioObj.dest_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -347,8 +346,8 @@ def main(args):
         no_intent_found = False
         print('Import mode:', ioObj.import_mode)
 
-        ioObj.getAccessToken(ioObj.dest_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -399,8 +398,8 @@ def main(args):
     if intent_name == "check-vmc-ini":
         no_intent_found = False
 
-        ioObj.getAccessToken(ioObj.source_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.source_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -421,8 +420,8 @@ def main(args):
 
         print(f'Export configuration: Org {ioObj.source_org_display_name} ({ioObj.source_org_id}), SDDC {ioObj.source_sddc_name} ({ioObj.source_sddc_id}), SDDC version {ioObj.source_sddc_version}')
 
-        ioObj.getAccessToken(ioObj.dest_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -446,8 +445,9 @@ def main(args):
     if intent_name == "export" or intent_name == "export-import":
         no_intent_found = False
 
-        ioObj.getAccessToken(ioObj.source_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.source_refresh_token)
+        
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -738,8 +738,8 @@ def main(args):
 
         print('Import mode:',ioObj.import_mode)
 
-        ioObj.getAccessToken(ioObj.dest_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
