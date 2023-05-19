@@ -899,7 +899,7 @@ def main(args):
 
         print("Import has been concluded. Thank you for using SDDC Import/Export for VMware Cloud on AWS.")
 
-    if no_intent_found == True:
+    if no_intent_found:
         print("\nWelcome to sddc_import_export!")
         print("\nHere are the currently supported commands: ")
         print("\nTo export your source SDDC to JSON")
