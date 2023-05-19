@@ -273,6 +273,64 @@ class VMCImportExport:
         self.RoleSyncSourceUserEmail = config.get("exportConfig","role_sync_source_user_email")
         self.RoleSyncDestUserEmails = config.get("importConfig","role_sync_dest_user_emails").split('|')
 
+    def error_handling(self, response):
+        """Helper function to properly report API errors"""
+        code = response.status_code
+        print(f'API call failed with status code {code}.')
+        if code == 301:
+            print(f'Error {code}: "Moved Permanently"')
+            print("Request must be reissued to a different controller node.")
+            print(
+                "The controller node has been replaced by a new node that should be used for this and all future requests.")
+        elif code == 307:
+            print(f'Error {code}: "Temporary Redirect"')
+            print("Request should be reissued to a different controller node.")
+            print(
+                "The controller node is requesting the client make further requests against the controller node specified in the Location header. Clients should continue to use the new server until directed otherwise by the new controller node.")
+        elif code == 400:
+            print(f'Error {code}: "Bad Request"')
+            print("Request was improperly formatted or contained an invalid parameter.")
+        elif code == 401:
+            print(f'Error {code}: "Unauthorized"')
+            print("The client has not authenticated.")
+            print("It's likely your refresh token is out of date or otherwise incorrect.")
+        elif code == 403:
+            print(f'Error {code}: "Forbidden"')
+            print("The client does not have sufficient privileges to execute the request.")
+            print("The API is likely in read-only mode, or a request was made to modify a read-only property.")
+            print("It's likely your refresh token does not provide sufficient access.")
+        elif code == 409:
+            print(f'Error {code}: "Temporary Redirect"')
+            print(
+                "The request can not be performed because it conflicts with configuration on a different entity, or because another client modified the same entity.")
+            print(
+                "If the conflict arose because of a conflict with a different entity, modify the conflicting configuration. If the problem is due to a concurrent update, re-fetch the resource, apply the desired update, and reissue the request.")
+        elif code == 412:
+            print(f'Error {code}: "Precondition Failed"')
+            print(
+                "The request can not be performed because a precondition check failed. Usually, this means that the client sent a PUT or PATCH request with an out-of-date _revision property, probably because some other client has modified the entity since it was retrieved. The client should re-fetch the entry, apply any desired changes, and re-submit the operation.")
+        elif code == 500:
+            print(f'Error {code}: "Internal Server Error"')
+            print(
+                "An internal error occurred while executing the request. If the problem persists, perform diagnostic system tests, or contact your support representative.")
+        elif code == 503:
+            print(f'Error {code}: "Service Unavailable"')
+            print(
+                "The request can not be performed because the associated resource could not be reached or is temporarily busy. Please confirm the ORG ID and SDDC ID entries in your config.ini are correct.")
+        else:
+            print(f'Error: {code}: Unknown error')
+        try:
+            json_response = response.json()
+            if 'error_message' in json_response:
+                print(json_response['error_message'])
+            if 'related_errors' in json_response:
+                print("Related Errors")
+                for r in json_response['related_errors']:
+                    print(r['error_message'])
+        except:
+            print("No additional information in the error response.")
+        return None
+
     def purgeJSONfiles(self):
         """Removes the JSON export files before a new export"""
         files = glob.glob(self.export_folder + '/*.json')
@@ -2123,6 +2181,41 @@ class VMCImportExport:
                     else:
                         print("TEST MODE - Tunnel Profile " +  payload["display_name"] + " created by " + tunp["_create_user"] + " would have been imported.")
 
+    def importVPNDPDProfiles(self):
+        self.vmc_auth.check_access_token_expiration()
+        fname = self.import_path / self.vpn_dpd_filename
+        with open(fname) as filehandle:
+            dpdps = json.load(filehandle)
+            payload = {}
+            for dpdp in dpdps:
+                if dpdp["_create_user"]!= 'admin' and dpdp['_create_user'] != "admin;admin" and dpdp['_create_user'] != "system":
+                    payload['id'] = dpdp['id']
+                    payload['display_name'] = dpdp['display_name']
+                    payload['dpd_probe_mode'] = dpdp['dpd_probe_mode']
+                    payload['dpd_probe_interval'] = dpdp['dpd_probe_interval']
+                    payload['retry_count'] = dpdp['retry_count']
+                    payload['enabled'] = dpdp['enabled']
+                    profile_url = dpdp['path']
+                    if self.import_mode == 'live':
+                        my_header = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
+                        my_url = f"{self.proxy_url}/policy/api/v1{profile_url}"
+                        json_data = json.dumps(payload)
+                        if self.sync_mode is True:
+                            response = requests.patch(my_url, headers=my_header, data=json_data)
+                        else:
+                            response = requests.put(my_url, headers=my_header, data=json_data)
+                        if response.status_code == 200:
+                            print(f"DPD Profile {payload['display_name']} has been imported")
+                            return True
+                        else:
+                            self.error_handling(response)
+                            return False
+                    else:
+                        print(f"TEST MODE - DPD Profile {payload['display_name']} created by {payload['_create_user']} would have been imported")
+                else:
+                    pass
+
+
     def importVPNl2config(self):
         self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.vpn_l2_filename
@@ -2258,9 +2351,10 @@ class VMCImportExport:
                             l3vpnresp = requests.put(myURL,headers=myHeader,data=json_data)
                         if l3vpnresp.status_code == 200:
                             print("L3VPN " + payload["id"] + " has been imported.")
+                            return True
                         else:
-                            print(f'API Call Status {l3vpnresp.status_code}, text:{l3vpnresp.text}')
-                            print(json_data)
+                            self.error_handling(l3vpnresp)
+                            return False
                     else:
                         print("TEST MODE - L3VPN " + l3vpn["id"] + " created by " + l3vpn["_create_user"] + " would have been imported.")
 
@@ -2292,7 +2386,7 @@ class VMCImportExport:
                         else:
                             createikepresp = requests.put(myURL,headers=myHeader,data=json_data)
                         if createikepresp.status_code == 200:
-                            print("VPN Profile " + payload["display_name"] + " has been imported.")
+                            print("IKE Profile " + payload["display_name"] + " has been imported.")
                         else:
                             print(f'API Call Status {createikepresp.status_code}, text:{createikepresp.text}')
                             print(json_data)
@@ -2526,12 +2620,20 @@ class VMCImportExport:
         else:
             print('IKE Profiles imported.')
         print("Beginning VPN Tunnel Profiles...")
+
         retval = self.importVPNTunnelProfiles()
         if retval is False:
            successval = False
            print('Tunnel profile import failure: ', self.lastJSONResponse)
         else:
            print('Tunnel profiles imported.')
+
+        retval = self.importVPNDPDProfiles()
+        if retval is False:
+            successval = False
+            print('DPD Profile import failure: ', self.lastJSONResponse)
+        else:
+            print('DPD Profiles imported.')
 
         print("Beginning BGP Neighbors...")
         retval = self.importVPNBGPNeighbors()
