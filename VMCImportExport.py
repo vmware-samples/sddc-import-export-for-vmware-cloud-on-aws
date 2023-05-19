@@ -2096,8 +2096,7 @@ class VMCImportExport:
                 if bgppresp.status_code == 200:
                     print("Local BGP config  has been imported.")
                 else:
-                    print(f'API Call Status {bgppresp.status_code}, text:{bgppresp.text}')
-                    print(json_data)
+                    self.error_handling(bgppresp)
             else:
                 print("TEST MODE - Local BGP config  would have been imported.")
 
@@ -2142,8 +2141,7 @@ class VMCImportExport:
                             if bgppresp.status_code == 200:
                                 print("BGP neighbor " + payload["display_name"] + " has been imported.")
                             else:
-                                print(f'API Call Status {bgppresp.status_code}, text:{bgppresp.text}')
-                                print(json_data)
+                                self.error_handling(bgppresp)
                         else:
                             print("TEST MODE - BGP Neighbor " +  payload["display_name"] + " created by " + bgpentry["_create_user"] + " would have been imported.")
 
@@ -2176,8 +2174,7 @@ class VMCImportExport:
                         if tunpresp.status_code == 200:
                             print("Tunnel Profile " + payload["display_name"] + " has been imported.")
                         else:
-                            print(f'API Call Status {tunpresp.status_code}, text:{tunpresp.text}')
-                            print(json_data)
+                            self.error_handling(tunpresp)
                     else:
                         print("TEST MODE - Tunnel Profile " +  payload["display_name"] + " created by " + tunp["_create_user"] + " would have been imported.")
 
@@ -2188,13 +2185,14 @@ class VMCImportExport:
             dpdps = json.load(filehandle)
             payload = {}
             for dpdp in dpdps:
-                if dpdp["_create_user"]!= 'admin' and dpdp['_create_user'] != "admin;admin" and dpdp['_create_user'] != "system":
+                if dpdp['_system_owned'] is False:
                     payload['id'] = dpdp['id']
                     payload['display_name'] = dpdp['display_name']
                     payload['dpd_probe_mode'] = dpdp['dpd_probe_mode']
                     payload['dpd_probe_interval'] = dpdp['dpd_probe_interval']
                     payload['retry_count'] = dpdp['retry_count']
                     payload['enabled'] = dpdp['enabled']
+                    payload['_create_user'] = dpdp['_create_user']
                     profile_url = dpdp['path']
                     if self.import_mode == 'live':
                         my_header = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
@@ -2206,14 +2204,10 @@ class VMCImportExport:
                             response = requests.put(my_url, headers=my_header, data=json_data)
                         if response.status_code == 200:
                             print(f"DPD Profile {payload['display_name']} has been imported")
-                            return True
                         else:
                             self.error_handling(response)
-                            return False
                     else:
                         print(f"TEST MODE - DPD Profile {payload['display_name']} created by {payload['_create_user']} would have been imported")
-                else:
-                    pass
 
 
     def importVPNl2config(self):
@@ -2248,8 +2242,7 @@ class VMCImportExport:
                         if l2vpnresp.status_code == 200:
                             print("L2VPN " + payload["id"] + " has been imported.")
                         else:
-                            print(f'API Call Status {l2vpnresp.status_code}, text:{l2vpnresp.text}')
-                            print(json_data)
+                            self.error_handling(l2vpnresp)
                     else:
                         print("TEST MODE - L2VPN " + l2vpn["id"] + " created by " + l2vpn["_create_user"] + " would have been imported.")
         return True
@@ -2351,10 +2344,8 @@ class VMCImportExport:
                             l3vpnresp = requests.put(myURL,headers=myHeader,data=json_data)
                         if l3vpnresp.status_code == 200:
                             print("L3VPN " + payload["id"] + " has been imported.")
-                            return True
                         else:
                             self.error_handling(l3vpnresp)
-                            return False
                     else:
                         print("TEST MODE - L3VPN " + l3vpn["id"] + " created by " + l3vpn["_create_user"] + " would have been imported.")
 
@@ -2388,8 +2379,7 @@ class VMCImportExport:
                         if createikepresp.status_code == 200:
                             print("IKE Profile " + payload["display_name"] + " has been imported.")
                         else:
-                            print(f'API Call Status {createikepresp.status_code}, text:{createikepresp.text}')
-                            print(json_data)
+                            self.error_handling(createikepresp)
                     else:
                         print("TEST MODE - IKE Profile " + ikep["display_name"] + " created by " + ikep["_create_user"] + " would have been imported.")
 
