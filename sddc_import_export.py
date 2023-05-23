@@ -562,6 +562,16 @@ def main(args):
         else:
             print("Multi-T1 Firewall Policy and Rules export skipped")
 
+        if ioObj.mpl_export is True:
+            print("Beginning Connected VPC Managed Prefix List export")
+            retval = ioObj.export_mpl()
+            if retval is True:
+                print("Connected VPC Managed Prefix List settings exported")
+            else:
+                print(f'Connected VPC Managed Prefix List export error: {ioObj.lastJSONResponse}')
+        else:
+            print("Connected VPC Managed Prefix List export skipped")
+
         if ioObj.ral_export is True:
             print('Beginning Route Aggegration list export')
             retval = ioObj.export_ral()
@@ -849,12 +859,22 @@ def main(args):
                 print('Tier-1 Gateway import is set to false, this can cause import error is Tier-1 Gateway objects are missing.')
             ioObj.import_mcgw_fw()
 
+        if ioObj.mpl_import is True:
+            print("Beginning import of Connected VPC Managed Prefix List configuration")
+            ioObj.import_mpl()
+        else:
+            print("Connected VPC Managed Prefix List import skipped...")
+
         if ioObj.ral_import is True:
             print('Beginning import of SDDC Route Aggregation Lists...')
+            if ioObj.mpl_import is False:
+                print("Managed Prefix List import is set to false.  If MPL is not enabled, Route Aggregation lists will not be imported successfully")
             ioObj.import_ral()
 
         if ioObj.route_config_import is True:
             print('Beginning import of SDDC Route Configurations...')
+            if ioObj.mpl_import is False:
+                print("Managed Prefix List import is set to false.  If MPL is not enabled, Route Configuration will not be imported successfully")
             if ioObj.ral_import is False:
                 print('Import of Route Configurations may be impacted by missing Route Aggregations lists')
             ioObj.import_route_config()

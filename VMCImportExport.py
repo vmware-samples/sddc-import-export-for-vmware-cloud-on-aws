@@ -179,7 +179,13 @@ class VMCImportExport:
         self.mcgw_fw_import = self.loadConfigFlag(config, "importConfig", "mcgw_fw_import")
         self.mcgw_fw_import_filename = self.loadConfigFilename(config, "importConfig", "mcgw_fw_import_filename")
 
-        #DDC Route Aggregation Lists and Route Configurations
+        #Connected VPC Managed Prefix List MOde
+        self.mpl_export = self.loadConfigFlag(config, 'exportConfig', 'mpl_export')
+        self.mpl_export_filename = self.loadConfigFilename(config, 'exportConfig', 'mpl_export_filename')
+        self.mpl_import = self.loadConfigFlag(config, 'importConfig', 'mpl_import')
+        self.mpl_import_filename = self.loadConfigFilename(config, 'importConfig', 'mpl_import_filename')
+
+        #SDDC Route Aggregation Lists and Route Configurations
         self.ral_export = self.loadConfigFlag(config, "exportConfig", "ral_export")
         self.ral_export_filename = self.loadConfigFilename(config, "exportConfig", "ral_export_filename")
         self.route_config_export = self.loadConfigFlag(config, "exportConfig", "route_config_export")
@@ -819,6 +825,22 @@ class VMCImportExport:
         with open(fname, 'w') as outfile:
             json.dump(mcgw_fw_policy_json, outfile, indent=4)
         return True
+
+
+    def export_mpl(self):
+        """Exports Connected VPC Managed Prefix List"""
+        my_url = f'{self.proxy_url}/cloud-service/api/v1/infra/linked-vpcs'
+        response = self.invokeCSPGET(my_url)
+        if response is None or response.status_code != 200:
+            self.error_handling(response)
+            return False
+        json_response = response.json()
+        mpl_response = json_response['results']
+        fname = self.export_path / self.mpl_export_filename
+        with open(fname, 'w') as outfile:
+            json.dump(mpl_response, outfile, indent=4)
+        return True
+
 
     def export_ral(self):
         """Exports the SDDCs Route Aggregation List(s)"""
@@ -1551,6 +1573,35 @@ class VMCImportExport:
                         print(f'API Call Status {response.status_code}, text:{response.text}')
         else:
             print(f"TEST MODE - Tier 1 Gateway firewall policy and rules would have been imported.")
+
+
+    def import_mpl(self):
+        """Import/Configuration Connected VPC Managed Prefix List"""
+        self.vmc_auth.check_access_token_expiration()
+        fname = self.import_path / self.mpl_import_filename
+        try:
+            with open(fname) as filehandle:
+                mpl = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {fname}')
+            return
+        if self.import_mode == 'live':
+          for m in mpl:
+            if m['linked_vpc_managed_prefix_list_info']['managed_prefix_list_mode'] == 'ENABLED':
+                vpc_id = m['linked_vpc_id']
+                my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
+                my_url = f'{self.proxy_url}/cloud-service/api/v1/linked-vpcs/{vpc_id}?action=enable_managed_prefix_list_mode'
+                response = requests.post(my_url, headers=my_header)
+                if response.status_code == 200:
+                    result = "SUCCESS"
+                    print('Enabled Managed Prefix List Mode. Proceed to the AWS Management Console and Resource Access Manager to accept the share')
+                else:
+                    self.error_handling(response)
+                    result = "FAIL"
+        else:
+            print("TEST MODE - Connected VPC Managed Prefix List mode would have been enabled")
+
+
 
     def import_ral(self):
         """Import SDDC Route Aggregation lists from JSON"""
