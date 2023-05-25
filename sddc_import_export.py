@@ -38,7 +38,7 @@ With git BASH on Windows, you might need to use 'python -m pip install' instead 
 """
 import boto3
 import sys
-MIN_PYTHON = (3,6)
+MIN_PYTHON = (3,10)
 assert sys.version_info >= MIN_PYTHON, f"Python {'.'.join([str(n) for n in MIN_PYTHON])} or newer is required."
 
 import argparse
@@ -661,6 +661,16 @@ def main(args):
                 print("VPN export error.")
         else:
             print("VPN export skipped.")
+
+        if ioObj.tier1_vpn_export is True:
+            print("Beginning export of Tier-1 VPNs")
+            retval = ioObj.export_tier1_vpn()
+            if retval is True:
+                print("Tier-1 VPNs exported")
+            else:
+                print("Tier-1 VPN export error")
+        else:
+            print("Tier-1 VPN export skipped.")
 
         if ioObj.export_history is True:
             retval = ioObj.zipJSONfiles()
