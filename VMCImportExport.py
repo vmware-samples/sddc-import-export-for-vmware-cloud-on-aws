@@ -117,6 +117,7 @@ class VMCImportExport:
         self.max_export_history_files = int(config.get("exportConfig", "max_export_history_files"))
         self.export_type          = self.loadConfigFilename(config,"exportConfig","export_type")
         self.import_mode_live_warning = self.loadConfigFlag(config,"importConfig","import_mode_live_warning")
+        self.enable_ipv6 = self.loadConfigFlag(config, 'importConfig', 'enable_ipv6')
 
         # vCenter
         self.srcvCenterURL          =  vCenterConfig.get("vCenterConfig","srcvCenterURL")
@@ -210,9 +211,11 @@ class VMCImportExport:
         #Flexible Segments
         self.flex_segment_export = self.loadConfigFlag(config, "exportConfig", "flex_segment_export")
         self.flex_segment_export_filename = self.loadConfigFilename(config, "exportConfig", "flex_segment_export_filename")
+        self.flex_segment_disc_prof_export_filename = self.loadConfigFilename(config, 'exportConfig', 'flex_segment_disc_prof_export_filename')
         self.flex_segment_import = self.loadConfigFlag(config, "importConfig", "flex_segment_import")
         self.flex_segment_import_filename = self.loadConfigFilename(config, "importConfig", "flex_segment_import_filename")
         self.flex_segment_import_exclude_list = self.loadConfigRegex(config, "importConfig", "flex_segment_import_exclude_list", '|')
+        self.flex_segment_disc_prof_import_filename = self.loadConfigFilename(config, 'importConfig', 'flex_segment_disc_prof_import_filename')
 
         #Public IP
         self.public_export           = self.loadConfigFlag(config,"exportConfig","public_export")
@@ -698,6 +701,30 @@ class VMCImportExport:
         fname = self.export_path / self.flex_segment_export_filename
         with open (fname, 'w') as outfile:
             json.dump(flex_segments, outfile, indent=4)
+        return True
+
+    def export_flexible_segment_disc_bindings(self):
+        """Exports the MAC and IP Discovery binding maps for each flexible segment to JSON"""
+        flex_seg_bind = {}
+        flex_seg_url = f'{self.proxy_url}/policy/api/v1/infra/segments'
+        flex_seg_resp = self.invokeCSPGET(flex_seg_url)
+        flex_seg_json = flex_seg_resp.json()
+        flex_seg_json = flex_seg_json['results']
+        flex_seg_id = []
+        for f in flex_seg_json:
+            flex_seg_name = f['id']
+            flex_seg_id.append(flex_seg_name)
+
+        for x in flex_seg_id:
+            my_url = f'{self.proxy_url}/policy/api/v1/infra/segments/{x}/segment-discovery-profile-binding-maps'
+            response = self.invokeCSPGET(my_url)
+            json_response = response.json()
+            disc_bind_map = json_response['results']
+            flex_seg_bind[x] = disc_bind_map
+
+        fname = self.export_path / self.flex_segment_disc_prof_export_filename
+        with open (fname, 'w') as outfile:
+            json.dump(flex_seg_bind, outfile, indent=4)
         return True
         
     def exportSDDCMGWRule(self):
@@ -1255,7 +1282,6 @@ class VMCImportExport:
                             t1_vpn_sen_response = self.invokeCSPGET(t1_vpn_sen_url)
                             if t1_vpn_sen_response.status_code == 200:
                                 t1_vpn_sen_json = t1_vpn_sen_response.json()
-                                # print(json.dumps(t1_vpn_sen_json, indent=2))
                                 t1_vpn_dict[t1_vpn_service_id] = t1_vpn_sen_json
                             else:
                                 self.error_handling(t1_vpn_sen_response)
@@ -2740,6 +2766,41 @@ class VMCImportExport:
             with open(fname, 'w') as outfile:
                 json.dump(aDict, outfile,indent=4)
             return aDict
+
+    def enable_sddc_ipv6(self):
+        """Enable IPv6 on destination SDDC if enalbed on source SDDC"""
+        self.vmc_auth.check_access_token_expiration()
+        fname = self.import_path / self.sddc_info_filename
+        with open(fname) as filehandle:
+            source_sddc_info = json.load(filehandle)
+        if self.import_mode == 'live':
+            if source_sddc_info['resource_config']['ipv6_enabled'] is True:
+                my_header = {"Content-Type": "application/json", "Accept": "application/json",
+                            'csp-auth-token': self.vmc_auth.access_token}
+                my_url = f'{self.strProdURL}/api/network/{self.dest_org_id}/aws/operations'
+                json_body = {
+                    "type": "ENABLE_IPV6",
+                    "resource_type": "deployment",
+                    "resource_id": self.dest_sddc_id,
+                    "config": {
+                        "type": "AwsEnableIpv6Config"
+                    }
+                }
+                response = requests.post(my_url, json=json_body, headers=my_header)
+                if response.status_code == 201:
+                    print(f"Enabling IPv6 on SDDC, please wait...")
+                    time.sleep(180)
+                    return True
+                else:
+                    self.error_handling(response)
+                    return False
+            else:
+                print(f'IPv6 not enalbed on source SDDC and will not be enabled on destination SDDC')
+                return False
+        else:
+            print(f'IPv6 would have been enabled on the destination SDDC')
+            return
+
 
     def importVPN(self):
         self.vmc_auth.check_access_token_expiration()
