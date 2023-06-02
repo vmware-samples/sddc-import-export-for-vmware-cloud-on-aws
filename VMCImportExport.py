@@ -117,6 +117,7 @@ class VMCImportExport:
         self.max_export_history_files = int(config.get("exportConfig", "max_export_history_files"))
         self.export_type          = self.loadConfigFilename(config,"exportConfig","export_type")
         self.import_mode_live_warning = self.loadConfigFlag(config,"importConfig","import_mode_live_warning")
+        self.enable_ipv6 = self.loadConfigFlag(config, 'importConfig', 'enable_ipv6')
 
         # vCenter
         self.srcvCenterURL          =  vCenterConfig.get("vCenterConfig","srcvCenterURL")
@@ -210,9 +211,11 @@ class VMCImportExport:
         #Flexible Segments
         self.flex_segment_export = self.loadConfigFlag(config, "exportConfig", "flex_segment_export")
         self.flex_segment_export_filename = self.loadConfigFilename(config, "exportConfig", "flex_segment_export_filename")
+        self.flex_segment_disc_prof_export_filename = self.loadConfigFilename(config, 'exportConfig', 'flex_segment_disc_prof_export_filename')
         self.flex_segment_import = self.loadConfigFlag(config, "importConfig", "flex_segment_import")
         self.flex_segment_import_filename = self.loadConfigFilename(config, "importConfig", "flex_segment_import_filename")
         self.flex_segment_import_exclude_list = self.loadConfigRegex(config, "importConfig", "flex_segment_import_exclude_list", '|')
+        self.flex_segment_disc_prof_import_filename = self.loadConfigFilename(config, 'importConfig', 'flex_segment_disc_prof_import_filename')
 
         #Public IP
         self.public_export           = self.loadConfigFlag(config,"exportConfig","public_export")
@@ -238,6 +241,10 @@ class VMCImportExport:
         self.vpn_l3_filename        = self.loadConfigFilename(config,"importConfig","vpn_l3_filename")
         self.vpn_l2_filename        = self.loadConfigFilename(config,"importConfig","vpn_l2_filename")
         self.vpn_disable_on_import  = self.loadConfigFlag(config,"importConfig","vpn_disable_on_import")
+        self.tier1_vpn_export = self.loadConfigFlag(config, 'exportConfig', 't1_vpn_export')
+        self.tier1_vpn_export_filename = self.loadConfigFilename(config, 'exportConfig', 't1_vpn_export_filename')
+        self.tier1_vpn_service_filename = self.loadConfigFilename(config, 'exportConfig', 't1_vpn_service_filename')
+        self.tier1_vpn_le_filename = self.loadConfigFilename(config, 'exportConfig', 't1_vpn_localendpoint_filename')
 
         #Service Access
         self.service_access_export  = self.loadConfigFlag(config,"exportConfig","service_access_export")
@@ -694,6 +701,30 @@ class VMCImportExport:
         fname = self.export_path / self.flex_segment_export_filename
         with open (fname, 'w') as outfile:
             json.dump(flex_segments, outfile, indent=4)
+        return True
+
+    def export_flexible_segment_disc_bindings(self):
+        """Exports the MAC and IP Discovery binding maps for each flexible segment to JSON"""
+        flex_seg_bind = {}
+        flex_seg_url = f'{self.proxy_url}/policy/api/v1/infra/segments'
+        flex_seg_resp = self.invokeCSPGET(flex_seg_url)
+        flex_seg_json = flex_seg_resp.json()
+        flex_seg_json = flex_seg_json['results']
+        flex_seg_id = []
+        for f in flex_seg_json:
+            flex_seg_name = f['id']
+            flex_seg_id.append(flex_seg_name)
+
+        for x in flex_seg_id:
+            my_url = f'{self.proxy_url}/policy/api/v1/infra/segments/{x}/segment-discovery-profile-binding-maps'
+            response = self.invokeCSPGET(my_url)
+            json_response = response.json()
+            disc_bind_map = json_response['results']
+            flex_seg_bind[x] = disc_bind_map
+
+        fname = self.export_path / self.flex_segment_disc_prof_export_filename
+        with open (fname, 'w') as outfile:
+            json.dump(flex_seg_bind, outfile, indent=4)
         return True
         
     def exportSDDCMGWRule(self):
@@ -1188,6 +1219,93 @@ class VMCImportExport:
         with open(fname, 'w') as outfile:
             json.dump(bgp_neighbors, outfile,indent=4)
         return True
+
+
+    def export_tier1_vpn(self):
+        """Exports the Tier-1 VPN Services"""
+        t1_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s'
+        t1_response = self.invokeVMCGET(t1_url)
+        if t1_response.status_code != 200:
+            self.error_handling(t1_response)
+            return False
+        t1_json = t1_response.json()
+        t1_lst = []
+        for t in t1_json['results']:
+            if t['_create_user'] != 'admin':
+                t1_lst.append(t['id'])
+        if self.vpn_export is False:
+            self.exportVPNIKEProfiles()
+            self.exportVPNTunnelProfiles()
+            self.exportVPNDPDProfiles()
+            self.exportVPNBGPNeighbors()
+            self.exportVPNLocalBGP()
+        t1_vpn_service_dict = {}
+        t1_vpn_le_dict = {}
+        t1_vpn_dict = {}
+        for t in t1_lst:
+            t1_vpn_service_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{t}/ipsec-vpn-services'
+            t1_vpn_service_response = self.invokeVMCGET(t1_vpn_service_url)
+            if t1_vpn_service_response.status_code == 200:
+                t1_vpn_service_json = t1_vpn_service_response.json()
+                t1_vpn_service = t1_vpn_service_json['results']
+                t1_vpn_service_dict[t] = t1_vpn_service
+                t1_vpn_service_id = t1_vpn_service[0]['id']
+            else:
+                self.error_handling(t1_vpn_service_response)
+                return False
+
+            t1_vpn_le_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{t}/ipsec-vpn-services/{t1_vpn_service_id}/local-endpoints'
+            t1_vpn_le_response = self.invokeVMCGET(t1_vpn_le_url)
+            if t1_vpn_le_response.status_code == 200:
+                t1_vpn_le_json = t1_vpn_le_response.json()
+                t1_vpn_le = t1_vpn_le_json['results']
+                if t1_vpn_le:
+                    t1_vpn_le_dict[t1_vpn_service_id] = t1_vpn_le
+                else:
+                    pass
+            else:
+                self.error_handling(t1_vpn_le_response)
+                return False
+
+            t1_vpn_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{t}/ipsec-vpn-services/{t1_vpn_service_id}/sessions'
+            t1_vpn_response = self.invokeCSPGET(t1_vpn_url)
+            if t1_vpn_response.status_code == 200:
+                t1_vpn_json = t1_vpn_response.json()
+                t1_vpn_json = t1_vpn_json['results']
+                if t1_vpn_json:
+                    for v in t1_vpn_json:
+                        if self.sddc_info_hide_sensitive_data is True:
+                            t1_vpn_dict[t1_vpn_service_id] = v
+                        else:
+                            t1_vpn_id = v['id']
+                            t1_vpn_sen_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{t}/ipsec-vpn-services/{t1_vpn_service_id}/sessions/{t1_vpn_id}?action=show_sensitive_data'
+                            t1_vpn_sen_response = self.invokeCSPGET(t1_vpn_sen_url)
+                            if t1_vpn_sen_response.status_code == 200:
+                                t1_vpn_sen_json = t1_vpn_sen_response.json()
+                                t1_vpn_dict[t1_vpn_service_id] = t1_vpn_sen_json
+                            else:
+                                self.error_handling(t1_vpn_sen_response)
+                                return False
+                else:
+                    pass
+            else:
+                self.error_handling(t1_vpn_response)
+                return False
+
+        fname = self.export_path / self.tier1_vpn_service_filename
+        with open(fname, 'w') as outfile:
+            json.dump(t1_vpn_service_dict, outfile, indent=4)
+
+        lname = self.export_path / self.tier1_vpn_le_filename
+        with open(lname, 'w') as lefile:
+            json.dump(t1_vpn_le_dict, lefile, indent=4)
+
+        vname = f'{self.export_path}/{self.tier1_vpn_export_filename}'
+        with open(vname, 'w') as outfile:
+            json.dump(t1_vpn_dict, outfile, indent=4)
+
+        return True
+
 
     def getVPNl3sensitivedata(self,l3vpnid):
         """ Retrieve sensitive data such as IPSEC preshared keys from an L3VPN configuration"""
@@ -2648,6 +2766,41 @@ class VMCImportExport:
             with open(fname, 'w') as outfile:
                 json.dump(aDict, outfile,indent=4)
             return aDict
+
+    def enable_sddc_ipv6(self):
+        """Enable IPv6 on destination SDDC if enalbed on source SDDC"""
+        self.vmc_auth.check_access_token_expiration()
+        fname = self.import_path / self.sddc_info_filename
+        with open(fname) as filehandle:
+            source_sddc_info = json.load(filehandle)
+        if self.import_mode == 'live':
+            if source_sddc_info['resource_config']['ipv6_enabled'] is True:
+                my_header = {"Content-Type": "application/json", "Accept": "application/json",
+                            'csp-auth-token': self.vmc_auth.access_token}
+                my_url = f'{self.strProdURL}/api/network/{self.dest_org_id}/aws/operations'
+                json_body = {
+                    "type": "ENABLE_IPV6",
+                    "resource_type": "deployment",
+                    "resource_id": self.dest_sddc_id,
+                    "config": {
+                        "type": "AwsEnableIpv6Config"
+                    }
+                }
+                response = requests.post(my_url, json=json_body, headers=my_header)
+                if response.status_code == 201:
+                    print(f"Enabling IPv6 on SDDC, please wait...")
+                    time.sleep(180)
+                    return True
+                else:
+                    self.error_handling(response)
+                    return False
+            else:
+                print(f'IPv6 not enalbed on source SDDC and will not be enabled on destination SDDC')
+                return False
+        else:
+            print(f'IPv6 would have been enabled on the destination SDDC')
+            return
+
 
     def importVPN(self):
         self.vmc_auth.check_access_token_expiration()

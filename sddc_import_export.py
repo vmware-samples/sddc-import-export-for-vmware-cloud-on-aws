@@ -38,7 +38,7 @@ With git BASH on Windows, you might need to use 'python -m pip install' instead 
 """
 import boto3
 import sys
-MIN_PYTHON = (3,6)
+MIN_PYTHON = (3,10)
 assert sys.version_info >= MIN_PYTHON, f"Python {'.'.join([str(n) for n in MIN_PYTHON])} or newer is required."
 
 import argparse
@@ -605,12 +605,13 @@ def main(args):
         if ioObj.flex_segment_export is True:
             print("Beginning flexible segment export...")
             retval = ioObj.export_flexible_segments()
-            if retval is True:
-                print("Flexible segment exported.")
+            retval2 = ioObj.export_flexible_segment_disc_bindings()
+            if retval is True and retval2 is True:
+                print("Flexible segment and segment discovery bindings exported.")
             else:
                 print(f"Flexible segment export error: {ioObj.lastJSONResponse}")
         else:
-            print("Flexible segment export skipped.")
+            print("Flexible segment and segment discovery profile bindings export skipped.")
 
         if ioObj.dfw_export is True:
             print("Beginning DFW export...")
@@ -661,6 +662,16 @@ def main(args):
                 print("VPN export error.")
         else:
             print("VPN export skipped.")
+
+        if ioObj.tier1_vpn_export is True:
+            print("Beginning export of Tier-1 VPNs")
+            retval = ioObj.export_tier1_vpn()
+            if retval is True:
+                print("Tier-1 VPNs exported")
+            else:
+                print("Tier-1 VPN export error")
+        else:
+            print("Tier-1 VPN export skipped.")
 
         if ioObj.export_history is True:
             retval = ioObj.zipJSONfiles()
@@ -783,6 +794,15 @@ def main(args):
                     print("Import mode set to test")
                 else:
                     print("Live import will proceed")
+
+        if ioObj.enable_ipv6 is True:
+            ipv6_enable_status = ioObj.enable_sddc_ipv6()
+            if ipv6_enable_status is True:
+                print(f'IPv6 enalbed on {ioObj.dest_sddc_name}')
+            else:
+                print(f'IPv6 not enabled on {ioObj.dest_sddc_name}')
+        else:
+            print('IPv6 enablement skipped')
 
         if ioObj.network_import is True:
             print("Beginning CGW network import...")
