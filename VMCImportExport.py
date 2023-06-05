@@ -1448,11 +1448,12 @@ class VMCImportExport:
                 json_data = {}
                 json_data['id'] = f['id']
                 json_data['display_name'] = f['display_name']
-                json_data['connectivity_path'] = f['connectivity_path']
                 json_data['type'] = f['type']
                 json_data['resource_type'] = f['resource_type']
-                json_data['subnets'] = f['subnets']
                 json_data['advanced_config'] = f['advanced_config']
+                if f['type'] == 'ROUTED':
+                    json_data['connectivity_path'] = f['connectivity_path']
+                    json_data['subnets'] = f['subnets']
                 uri_path = f['path']
                 if self.import_mode == 'live':
                     my_header = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token}
@@ -2774,29 +2775,34 @@ class VMCImportExport:
         with open(fname) as filehandle:
             source_sddc_info = json.load(filehandle)
         if self.import_mode == 'live':
-            if source_sddc_info['resource_config']['ipv6_enabled'] is True:
-                my_header = {"Content-Type": "application/json", "Accept": "application/json",
-                            'csp-auth-token': self.vmc_auth.access_token}
-                my_url = f'{self.strProdURL}/api/network/{self.dest_org_id}/aws/operations'
-                json_body = {
-                    "type": "ENABLE_IPV6",
-                    "resource_type": "deployment",
-                    "resource_id": self.dest_sddc_id,
-                    "config": {
-                        "type": "AwsEnableIpv6Config"
-                    }
-                }
-                response = requests.post(my_url, json=json_body, headers=my_header)
-                if response.status_code == 201:
-                    print(f"Enabling IPv6 on SDDC, please wait...")
-                    time.sleep(180)
-                    return True
-                else:
-                    self.error_handling(response)
-                    return False
+            dest_sddc_json = self.loadSDDCData(self.dest_org_id, self.dest_sddc_id)
+            if dest_sddc_json['resource_config']['ipv6_enabled'] is True:
+                print(f"IPv6 already enabled on {self.dest_sddc_name}...skipping")
+                return True
             else:
-                print(f'IPv6 not enalbed on source SDDC and will not be enabled on destination SDDC')
-                return False
+                if source_sddc_info['resource_config']['ipv6_enabled'] is True:
+                    my_header = {"Content-Type": "application/json", "Accept": "application/json",
+                                'csp-auth-token': self.vmc_auth.access_token}
+                    my_url = f'{self.strProdURL}/api/network/{self.dest_org_id}/aws/operations'
+                    json_body = {
+                        "type": "ENABLE_IPV6",
+                        "resource_type": "deployment",
+                        "resource_id": self.dest_sddc_id,
+                        "config": {
+                            "type": "AwsEnableIpv6Config"
+                        }
+                    }
+                    response = requests.post(my_url, json=json_body, headers=my_header)
+                    if response.status_code == 201:
+                        print(f"Enabling IPv6 on SDDC, please wait...")
+                        time.sleep(180)
+                        return True
+                    else:
+                        self.error_handling(response)
+                        return False
+                else:
+                    print(f'IPv6 not enalbed on source SDDC and will not be enabled on destination SDDC')
+                    return False
         else:
             print(f'IPv6 would have been enabled on the destination SDDC')
             return
