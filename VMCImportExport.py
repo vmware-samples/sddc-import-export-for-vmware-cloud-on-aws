@@ -1479,6 +1479,42 @@ class VMCImportExport:
             table.add_row([import_results[i]['display_name'], import_results[i]['result'], import_results[i]['result_note'], import_results[i]['id']])
         return table
 
+    def import_flex_seg_disc_binding_map(self):
+        """Imports Segment profile binding maps for all imported flexible segments"""
+        self.vmc_auth.check_access_token_expiration()
+        fname = self.import_path / self.flex_segment_disc_prof_export_filename
+        try:
+            with open (fname) as filehandle:
+                binding_maps = json.load(filehandle)
+        except:
+            print(f"Import failed - unable to open {filehandle}")
+            return
+        for b in binding_maps.values():
+            if b:
+                json_data = {}
+                json_data['mac_discovery_profile_path'] = b[0]['mac_discovery_profile_path']
+                json_data['ip_discovery_profile_path'] = b[0]['ip_discovery_profile_path']
+                json_data['resource_type'] = b[0]['resource_type']
+                json_data['id'] = b[0]['id']
+                json_data['display_name'] = b[0]['display_name']
+                uri_path = b[0]['path']
+
+                if self.import_mode == 'live':
+                    my_header = {"Content-Type": "application/json", "Accept": "application/json",
+                                 'csp-auth-token': self.vmc_auth.access_token}
+                    my_url = f'{self.proxy_url}/policy/api/v1{uri_path}'
+                    response = requests.put(my_url, headers = my_header, json = json_data)
+                    if response.status_code == 200:
+                        print(f'Discovery binding map has been updated for segment {b[0]["parent_path"]}')
+                    else:
+                        self.error_handling(response)
+                else:
+                    print(f'TEST MODE - Discovery binding map for segment {b[0]["parent_path"]} would have been imported')
+            else:
+                pass
+
+
+
     def importCGWDHCPStaticBindings(self):
         self.vmc_auth.check_access_token_expiration()
         fname = self.import_path / self.network_dhcp_static_binding_filename
