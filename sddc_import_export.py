@@ -912,6 +912,7 @@ def main(args):
             import_table = ioObj.import_flex_segments()
             print("Import results:\n")
             print(import_table)
+            ioObj.import_flex_seg_disc_binding_map()
 
         if ioObj.public_import is True:
             print("Beginning Public IP import...")
