@@ -1248,61 +1248,67 @@ class VMCImportExport:
             if t1_vpn_service_response.status_code == 200:
                 t1_vpn_service_json = t1_vpn_service_response.json()
                 t1_vpn_service = t1_vpn_service_json['results']
-                t1_vpn_service_dict[t] = t1_vpn_service
-                t1_vpn_service_id = t1_vpn_service[0]['id']
+                if t1_vpn_service:
+                    t1_vpn_service_dict[t] = t1_vpn_service
+                    t1_vpn_service_id = t1_vpn_service[0]['id']
+
+                    t1_vpn_le_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{t}/ipsec-vpn-services/{t1_vpn_service_id}/local-endpoints'
+                    t1_vpn_le_response = self.invokeVMCGET(t1_vpn_le_url)
+                    if t1_vpn_le_response.status_code == 200:
+                        t1_vpn_le_json = t1_vpn_le_response.json()
+                        t1_vpn_le = t1_vpn_le_json['results']
+                        if t1_vpn_le:
+                            t1_vpn_le_dict[t1_vpn_service_id] = t1_vpn_le
+                        else:
+                            pass
+                    else:
+                        self.error_handling(t1_vpn_le_response)
+                        return False
+
+                    t1_vpn_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{t}/ipsec-vpn-services/{t1_vpn_service_id}/sessions'
+                    t1_vpn_response = self.invokeCSPGET(t1_vpn_url)
+                    if t1_vpn_response.status_code == 200:
+                        t1_vpn_json = t1_vpn_response.json()
+                        t1_vpn_json = t1_vpn_json['results']
+                        if t1_vpn_json:
+                            for v in t1_vpn_json:
+                                if self.sddc_info_hide_sensitive_data is True:
+                                    t1_vpn_dict[t1_vpn_service_id] = v
+                                else:
+                                    t1_vpn_id = v['id']
+                                    t1_vpn_sen_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{t}/ipsec-vpn-services/{t1_vpn_service_id}/sessions/{t1_vpn_id}?action=show_sensitive_data'
+                                    t1_vpn_sen_response = self.invokeCSPGET(t1_vpn_sen_url)
+                                    if t1_vpn_sen_response.status_code == 200:
+                                        t1_vpn_sen_json = t1_vpn_sen_response.json()
+                                        t1_vpn_dict[t1_vpn_service_id] = t1_vpn_sen_json
+                                    else:
+                                        self.error_handling(t1_vpn_sen_response)
+                                        return False
+                        else:
+                            pass
+                    else:
+                        self.error_handling(t1_vpn_response)
+                        return False
+                else:
+                    pass
             else:
                 self.error_handling(t1_vpn_service_response)
                 return False
 
-            t1_vpn_le_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{t}/ipsec-vpn-services/{t1_vpn_service_id}/local-endpoints'
-            t1_vpn_le_response = self.invokeVMCGET(t1_vpn_le_url)
-            if t1_vpn_le_response.status_code == 200:
-                t1_vpn_le_json = t1_vpn_le_response.json()
-                t1_vpn_le = t1_vpn_le_json['results']
-                if t1_vpn_le:
-                    t1_vpn_le_dict[t1_vpn_service_id] = t1_vpn_le
-                else:
-                    pass
-            else:
-                self.error_handling(t1_vpn_le_response)
-                return False
+        if t1_vpn_service_dict:
+            fname = self.export_path / self.tier1_vpn_service_filename
+            with open(fname, 'w') as outfile:
+                json.dump(t1_vpn_service_dict, outfile, indent=4)
 
-            t1_vpn_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{t}/ipsec-vpn-services/{t1_vpn_service_id}/sessions'
-            t1_vpn_response = self.invokeCSPGET(t1_vpn_url)
-            if t1_vpn_response.status_code == 200:
-                t1_vpn_json = t1_vpn_response.json()
-                t1_vpn_json = t1_vpn_json['results']
-                if t1_vpn_json:
-                    for v in t1_vpn_json:
-                        if self.sddc_info_hide_sensitive_data is True:
-                            t1_vpn_dict[t1_vpn_service_id] = v
-                        else:
-                            t1_vpn_id = v['id']
-                            t1_vpn_sen_url = f'{self.proxy_url}/policy/api/v1/infra/tier-1s/{t}/ipsec-vpn-services/{t1_vpn_service_id}/sessions/{t1_vpn_id}?action=show_sensitive_data'
-                            t1_vpn_sen_response = self.invokeCSPGET(t1_vpn_sen_url)
-                            if t1_vpn_sen_response.status_code == 200:
-                                t1_vpn_sen_json = t1_vpn_sen_response.json()
-                                t1_vpn_dict[t1_vpn_service_id] = t1_vpn_sen_json
-                            else:
-                                self.error_handling(t1_vpn_sen_response)
-                                return False
-                else:
-                    pass
-            else:
-                self.error_handling(t1_vpn_response)
-                return False
+        if t1_vpn_le_dict:
+            lname = self.export_path / self.tier1_vpn_le_filename
+            with open(lname, 'w') as lefile:
+                json.dump(t1_vpn_le_dict, lefile, indent=4)
 
-        fname = self.export_path / self.tier1_vpn_service_filename
-        with open(fname, 'w') as outfile:
-            json.dump(t1_vpn_service_dict, outfile, indent=4)
-
-        lname = self.export_path / self.tier1_vpn_le_filename
-        with open(lname, 'w') as lefile:
-            json.dump(t1_vpn_le_dict, lefile, indent=4)
-
-        vname = f'{self.export_path}/{self.tier1_vpn_export_filename}'
-        with open(vname, 'w') as outfile:
-            json.dump(t1_vpn_dict, outfile, indent=4)
+        if t1_vpn_dict:
+            vname = f'{self.export_path}/{self.tier1_vpn_export_filename}'
+            with open(vname, 'w') as outfile:
+                json.dump(t1_vpn_dict, outfile, indent=4)
 
         return True
 
@@ -1512,8 +1518,6 @@ class VMCImportExport:
                     print(f'TEST MODE - Discovery binding map for segment {b[0]["parent_path"]} would have been imported')
             else:
                 pass
-
-
 
     def importCGWDHCPStaticBindings(self):
         self.vmc_auth.check_access_token_expiration()
