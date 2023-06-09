@@ -1601,6 +1601,7 @@ class VMCImportExport:
                 else:
                     print("TEST MODE - Service",service["display_name"],"would have been imported.")
 
+
     def import_mcgw(self):
         """Import Tier-1 gateways from a JSON file"""
         self.vmc_auth.check_access_token_expiration()
@@ -1613,24 +1614,27 @@ class VMCImportExport:
             return
         for mcgw in mcgws.values():
             json_data = {}
+            json_data['id'] = mcgw['id']
+            json_data['display_name'] = mcgw['display_name']
+            json_data['type'] = mcgw['type']
+            if 'dhcp_config_paths' in mcgw:
+                json_data['dhcp_config_paths'] = mcgw['dhcp_config_paths']
             if self.import_mode == "live":
-                json_data['id'] = mcgw['id']
-                json_data['display_name'] = mcgw['display_name']
-                json_data['type'] = mcgw['type']
-                if 'dhcp_config_paths' in mcgw:
-                    json_data['dhcp_config_paths'] = mcgw['dhcp_config_paths']
-            my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
-            my_url = self.proxy_url + '/policy/api/v1/infra/tier-1s/' + mcgw['id']
-            if self.sync_mode is True:
-                response = requests.patch(my_url, headers=my_header, json=json_data)
+                my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
+                my_url = self.proxy_url + '/policy/api/v1/infra/tier-1s/' + mcgw['id']
+                if self.sync_mode is True:
+                    response = requests.patch(my_url, headers=my_header, json=json_data)
+                else:
+                    response = requests.put(my_url, headers=my_header, json=json_data)
+                if response.status_code == 200:
+                    result = "SUCCESS"
+                    print('Added {}'.format(json_data['display_name']))
+                else:
+                    result = "FAIL"
+                    self.error_handling(response)
             else:
-                response = requests.put(my_url, headers=my_header, json=json_data)
-            if response.status_code == 200:
-                result = "SUCCESS"
-                print('Added {}'.format(json_data['display_name']))
-            else:
-                result = "FAIL"
-                print(f'API Call Status {response.status_code}, text:{response.text}')
+                print(f'TEST MODE - {mcgw["id"]} would have been imported')
+
 
     def import_mcgw_static_routes(self):
         """Import Tier-1 Gateway static routes from a JSON file"""
@@ -1642,18 +1646,20 @@ class VMCImportExport:
         except:
             print(f'Import failed - unable to open {fname}')
             return
-        if self.import_mode == 'live':
-            for route in routes.values():
-                for r in route['results']:
-                    json_data = {}
-                    json_data['display_name'] = r['display_name']
-                    json_data['id'] = r['id']
-                    json_data['network'] = r['network']
-                    json_data['next_hops'] = r['next_hops']
-                    json_data['resource_type'] = r['resource_type']
-                    path = r['path']
+        
+        for route in routes.values():
+            for r in route['results']:
+                
+                json_data = {}
+                json_data['display_name'] = r['display_name']
+                json_data['id'] = r['id']
+                json_data['network'] = r['network']
+                json_data['next_hops'] = r['next_hops']
+                json_data['resource_type'] = r['resource_type']
+                path = r['path']
+                if self.import_mode == 'live':
                     my_header = {"Content-Type": "application/json", "Accept": "application/json",
-                                 "csp-auth-token": self.vmc_auth.access_token}
+                                    "csp-auth-token": self.vmc_auth.access_token}
                     my_url = f'{self.proxy_url}/policy/api/v1{path}'
                     if self.sync_mode is True:
                         response = requests.patch(my_url, headers=my_header, json=json_data)
@@ -1664,9 +1670,10 @@ class VMCImportExport:
                         print('Added {}'.format(json_data['display_name']))
                     else:
                         result = "FAIL"
-                        print(f'API Call Status {response.status_code}, text:{response.text}')
-        else:
-            print(f"TEST MODE - Tier 1 Gateway static routes would have been imported.")
+                        self.error_handling(response)
+                else:
+                    print(f"TEST MODE - Tier 1 Gateway static routes for {r['id']} would have been imported.")
+
 
     def import_mcgw_fw(self):
         """Import Tier-1 Gateway firewall policies and rules from a JSON file"""
@@ -1678,16 +1685,17 @@ class VMCImportExport:
         except:
             print(f'Import failed - unable to open {fname}')
             return
-        if self.import_mode == 'live':
-            for policy in rules.values():
-                # print(json.dumps(policy, indent=2))
-                # import and create the top level firewall policy
-                json_policy_data = {}
-                json_policy_data['resource_type'] = policy['resource_type']
-                json_policy_data['id'] = policy['id']
-                json_policy_data['display_name'] = policy['display_name']
-                json_policy_data['category'] = policy['category']
-                path = policy['path']
+        
+        for policy in rules.values():
+            # print(json.dumps(policy, indent=2))
+            # import and create the top level firewall policy
+            json_policy_data = {}
+            json_policy_data['resource_type'] = policy['resource_type']
+            json_policy_data['id'] = policy['id']
+            json_policy_data['display_name'] = policy['display_name']
+            json_policy_data['category'] = policy['category']
+            path = policy['path']
+            if self.import_mode == 'live':
                 my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
                 my_url = f'{self.proxy_url}/policy/api/v1{path}'
                 if self.sync_mode is True:
@@ -1699,7 +1707,7 @@ class VMCImportExport:
                     print(f'Added {json_policy_data["id"]} firewall policy')
                 else:
                     result = "FAIL"
-                    print(f'API Call Status {response.status_code}, text:{response.text}')
+                    self.error_handling(response)
                 json_rule_data = {}
                 rules = policy['rules']
                 for r in rules:
@@ -1718,7 +1726,7 @@ class VMCImportExport:
                     json_rule_data['tag'] = r['tag']
                     path = r['path']
                     my_header = {"Content-Type": "application/json", "Accept": "application/json",
-                                 "csp-auth-token": self.vmc_auth.access_token}
+                                    "csp-auth-token": self.vmc_auth.access_token}
                     my_url = f'{self.proxy_url}/policy/api/v1{path}'
                     if self.sync_mode is True:
                         response = requests.patch(my_url, headers=my_header, json=json_rule_data)
@@ -1729,9 +1737,9 @@ class VMCImportExport:
                         print(f'Added {json_rule_data["display_name"]} firewall rule')
                     else:
                         result = "FAIL"
-                        print(f'API Call Status {response.status_code}, text:{response.text}')
-        else:
-            print(f"TEST MODE - Tier 1 Gateway firewall policy and rules would have been imported.")
+                        self.error_handling(response)
+            else:
+                print(f"TEST MODE - Tier 1 Gateway {policy['id']} firewall policy and rules would have been imported.")
 
 
     def import_mpl(self):
@@ -1744,22 +1752,26 @@ class VMCImportExport:
         except:
             print(f'Import failed - unable to open {fname}')
             return
-        if self.import_mode == 'live':
-          for m in mpl:
+        
+        for m in mpl:
             if m['linked_vpc_managed_prefix_list_info']['managed_prefix_list_mode'] == 'ENABLED':
                 vpc_id = m['linked_vpc_id']
-                my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
-                my_url = f'{self.proxy_url}/cloud-service/api/v1/linked-vpcs/{vpc_id}?action=enable_managed_prefix_list_mode'
-                response = requests.post(my_url, headers=my_header)
-                if response.status_code == 200:
-                    result = "SUCCESS"
-                    print('Enabled Managed Prefix List Mode. Proceed to the AWS Management Console and Resource Access Manager to accept the share')
+                if self.import_mode == 'live':
+                    my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
+                    my_url = f'{self.proxy_url}/cloud-service/api/v1/linked-vpcs/{vpc_id}?action=enable_managed_prefix_list_mode'
+                    response = requests.post(my_url, headers=my_header)
+                    if response.status_code == 200:
+                        result = "SUCCESS"
+                        print('Enabled Managed Prefix List Mode. Proceed to the AWS Management Console and Resource Access Manager to accept the share')
+                    else:
+                        self.error_handling(response)
+                        result = "FAIL"
                 else:
-                    self.error_handling(response)
+                    print("TEST MODE - Connected VPC Managed Prefix List mode would have been enabled")
                     result = "FAIL"
-        else:
-            print("TEST MODE - Connected VPC Managed Prefix List mode would have been enabled")
-
+            else:
+                print(f'Source SDDC did not have Managed Prefix List enabled...skipping')
+                pass
 
 
     def import_ral(self):
@@ -1772,15 +1784,15 @@ class VMCImportExport:
         except:
             print(f'Import failed - unable to open {fname}')
             return
-        if self.import_mode == 'live':
-            for r in ral:
-                json_data = {}
-                json_data['display_name'] = r['display_name']
-                json_data['prefixes'] = r['prefixes']
-                json_data['resource_type'] = r['resource_type']
-                json_data['id'] = r['id']
-                path = r['path']
-                # print(json.dumps(json_data, indent=2))
+        for r in ral:
+            json_data = {}
+            json_data['display_name'] = r['display_name']
+            json_data['prefixes'] = r['prefixes']
+            json_data['resource_type'] = r['resource_type']
+            json_data['id'] = r['id']
+            path = r['path']
+            # print(json.dumps(json_data, indent=2))
+            if self.import_mode == 'live':
                 my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
                 my_url = f'{self.proxy_url}/cloud-service/api/v1{path}'
                 response = requests.put(my_url, headers=my_header, json=json_data)
@@ -1789,9 +1801,10 @@ class VMCImportExport:
                     print(f'Added {json_data["display_name"]} route aggregation list')
                 else:
                     result = "FAIL"
-                    print(f'API Call Status {response.status_code}, text:{response.text}')
-        else:
-            print(f'TEST Mode - Route Aggregation lists would have been imported')
+                    self.error_handling(response)
+            else:
+                print(f'TEST Mode - Route Aggregation lists {json_data["id"]} would have been imported')
+
 
     def import_route_config(self):
         """Imports SDDC route configuration from JSON"""
@@ -1803,16 +1816,17 @@ class VMCImportExport:
         except:
             print(f'Import failed - unable to open {fname}')
             return
-        if self.import_mode == 'live':
-            for r in config:
-                json_data = {}
-                json_data['display_name'] = r['display_name']
-                json_data['resource_type'] = r['resource_type']
-                json_data['id'] = r['id']
-                json_data['aggregation_route_config'] = r['aggregation_route_config']
-                json_data['connectivity_endpoint_path'] = r['connectivity_endpoint_path']
+        dest_sddc = self.loadSDDCData(self.dest_org_id, self.dest_sddc_id)
+        for r in config:
+            json_data = {}
+            json_data['display_name'] = r['display_name']
+            json_data['resource_type'] = r['resource_type']
+            json_data['id'] = r['id']
+            json_data['aggregation_route_config'] = r['aggregation_route_config']
+            json_data['connectivity_endpoint_path'] = r['connectivity_endpoint_path']
+            if self.import_mode == 'live':
                 my_header = {"Content-Type": "application/json", "Accept": "application/json",
-                             "csp-auth-token": self.vmc_auth.access_token}
+                                "csp-auth-token": self.vmc_auth.access_token}
                 my_url = f'{self.proxy_url}/cloud-service/api/v1/infra/external/route/configs/{r["id"]}'
                 response = requests.put(my_url, headers=my_header, json=json_data)
                 if response.status_code == 200:
@@ -1820,9 +1834,10 @@ class VMCImportExport:
                     print(f'Added {json_data["display_name"]} route configuration')
                 else:
                     result = "FAIL"
-                    print(f'API Call Status {response.status_code}, text:{response.text}')
-        else:
-            print(f'TEST Mode - Route configuration would have been imported')
+                    self.error_handling(response)
+            else:
+                print(f'TEST Mode - Route configuration {json_data["id"]} would have been imported')
+
 
     def convertServiceRolePayload(self, sourcePayload: str) -> bool:
         """Converts a ServiceRole payload from its default format to the format required to add it to a User. Saves results to convertedServiceRolePayload """
