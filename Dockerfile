@@ -1,4 +1,4 @@
-FROM bitnami/python:3.9.5-prod
+FROM bitnami/python:latest
 
 WORKDIR /tmp/scripts
 

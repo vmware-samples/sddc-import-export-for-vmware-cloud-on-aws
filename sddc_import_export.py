@@ -798,7 +798,7 @@ def main(args):
         if ioObj.enable_ipv6 is True:
             ipv6_enable_status = ioObj.enable_sddc_ipv6()
             if ipv6_enable_status is True:
-                print(f'IPv6 enalbed on {ioObj.dest_sddc_name}')
+                print(f'IPv6 enabled on {ioObj.dest_sddc_name}')
             else:
                 print(f'IPv6 not enabled on {ioObj.dest_sddc_name}')
         else:
