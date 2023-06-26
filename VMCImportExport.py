@@ -1398,6 +1398,9 @@ class VMCImportExport:
                 resultNote += "No subnets found."
             if "advanced_config" in n:
                 json_data["advanced_config"] = n["advanced_config"]
+            if 'tags' in n:
+                json_data['tags'] = n['tags']
+            
             if self.import_mode == "live":
                 myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                 myURL = (self.proxy_url + "/policy/api/v1/infra/tier-1s/cgw/segments/" + n['id'])
@@ -1457,6 +1460,8 @@ class VMCImportExport:
                 json_data['type'] = f['type']
                 json_data['resource_type'] = f['resource_type']
                 json_data['advanced_config'] = f['advanced_config']
+                if 'tags' in f:
+                    json_data['tags'] = f['tags']
                 if f['type'] == 'ROUTED':
                     json_data['connectivity_path'] = f['connectivity_path']
                     json_data['subnets'] = f['subnets']
@@ -1571,6 +1576,9 @@ class VMCImportExport:
                     json_data["resource_type"]=service["resource_type"]
                     json_data["display_name"]=service["display_name"]
                     json_data["service_type"]=service["service_type"]
+                    if 'tags' in service:
+                        json_data['tags'] = service['tags']
+                    
                     service_entries = []
                     for entry in service["service_entries"]:
                         #print("-------------------------------------------------")
@@ -1619,6 +1627,9 @@ class VMCImportExport:
             json_data['type'] = mcgw['type']
             if 'dhcp_config_paths' in mcgw:
                 json_data['dhcp_config_paths'] = mcgw['dhcp_config_paths']
+            if 'tags' in mcgw:
+                json_data['tags'] = mcgw['tags']
+            
             if self.import_mode == "live":
                 my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
                 my_url = self.proxy_url + '/policy/api/v1/infra/tier-1s/' + mcgw['id']
@@ -2224,6 +2235,9 @@ class VMCImportExport:
                 payload["id"]=group["id"]
                 payload["resource_type"]=group["resource_type"]
                 payload["display_name"]=group["display_name"]
+                if 'tags' in group:
+                    payload['tags'] = group['tags']
+
                 if self.import_mode == "live":
                     myHeader = {"Content-Type": "application/json","Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token }
                     myURL = self.proxy_url + "/policy/api/v1/infra/domains/cgw/groups/" + group["id"]
@@ -2688,6 +2702,8 @@ class VMCImportExport:
                 payload["id"]=group["id"]
                 payload["resource_type"]=group["resource_type"]
                 payload["display_name"]=group["display_name"]
+                if 'tags' in group:
+                    payload['tags'] = group['tags']
                 if "expression" in group:
                     payload["expression"]=group["expression"]
                 if self.import_mode == "live":
