@@ -1791,7 +1791,10 @@ class VMCImportExport:
             json_data['resource_type'] = r['resource_type']
             json_data['id'] = r['id']
             path = r['path']
-            # print(json.dumps(json_data, indent=2))
+            if 'address_family' in r:
+                json_data['address_family'] = r['address_family']
+            else:
+                json_data['address_family'] = 'IPv4'
             if self.import_mode == 'live':
                 my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
                 my_url = f'{self.proxy_url}/cloud-service/api/v1{path}'
@@ -1816,7 +1819,6 @@ class VMCImportExport:
         except:
             print(f'Import failed - unable to open {fname}')
             return
-        dest_sddc = self.loadSDDCData(self.dest_org_id, self.dest_sddc_id)
         for r in config:
             json_data = {}
             json_data['display_name'] = r['display_name']
