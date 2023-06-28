@@ -1792,15 +1792,15 @@ class VMCImportExport:
                                 vpc_resp = vpc_resp_json.json()
                                 mpl_status = vpc_resp['linked_vpc_managed_prefix_list_info']['managed_prefix_list_mode']
                                 while mpl_status != "ENABLED":
-                                    time.sleep(20)
                                     print(f'Waiting for MPL to be enabled')
+                                    time.sleep(20)
                                     vpc_resp_json = self.invokeCSPGET(linked_vpn_url)
                                     vpc_resp = vpc_resp_json.json()
                                     mpl_status = vpc_resp['linked_vpc_managed_prefix_list_info']['managed_prefix_list_mode']
                                 if mpl_status == "ENABLED" and self.automate_vpc_route_table_programming is True:
                                     rt_lst = m['linked_vpc_managed_prefix_list_info']['managed_prefix_lists'][0]['programming_info']['route_table_ids']
-                                    active_eni = m['linked_vpc_managed_prefix_list_info']['managed_prefix_lists'][0]['programming_info']['active_eni']
-                                    prefix_list_id = m['linked_vpc_managed_prefix_list_info']['managed_prefix_lists'][0]['id']
+                                    active_eni = vpc_resp['linked_vpc_managed_prefix_list_info']['managed_prefix_lists'][0]['programming_info']['active_eni']
+                                    prefix_list_id = vpc_resp['linked_vpc_managed_prefix_list_info']['managed_prefix_lists'][0]['id']
                                     vpc_resp = self.vpc_rt_prog(rt_lst, active_eni, prefix_list_id)
                             else:
                                 print('Resourse share acceptance failed.  Continuing with import, please check the AWS Management Console')
