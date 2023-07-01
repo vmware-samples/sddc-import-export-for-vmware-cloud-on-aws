@@ -15,6 +15,7 @@ import os
 import re
 import time
 import sys
+import boto3
 
 from pathlib import Path
 from prettytable import PrettyTable
@@ -76,6 +77,9 @@ class VMCImportExport:
         self.convertedServiceRolePayload = ""
         self.RoleSyncSourceUserEmail = ""
         self.RoleSyncDestUserEmails = {}
+        self.aws_import_access_key_id = ""
+        self.aws_import_secret_access_key = ""
+        self.aws_import_session_token = ""
         self.ConfigLoader()
 
     def ConfigLoader(self):
@@ -185,6 +189,8 @@ class VMCImportExport:
         self.mpl_export_filename = self.loadConfigFilename(config, 'exportConfig', 'mpl_export_filename')
         self.mpl_import = self.loadConfigFlag(config, 'importConfig', 'mpl_import')
         self.mpl_import_filename = self.loadConfigFilename(config, 'importConfig', 'mpl_import_filename')
+        self.automate_ram_acceptance = self.loadConfigFlag(config, 'importConfig', 'automate_ram_acceptance')
+        self.automate_vpc_route_table_programming = self.loadConfigFlag(config, 'importConfig', 'automate_vpc_route_table_programming')
 
         #SDDC Route Aggregation Lists and Route Configurations
         self.ral_export = self.loadConfigFlag(config, "exportConfig", "ral_export")
@@ -264,6 +270,9 @@ class VMCImportExport:
         self.aws_s3_export_access_id = self.loadConfigFilename(awsConfig,"awsConfig","aws_s3_export_access_id")
         self.aws_s3_export_access_secret = self.loadConfigFilename(awsConfig,"awsConfig","aws_s3_export_access_secret")
         self.aws_s3_export_bucket = self.loadConfigFilename(awsConfig,"awsConfig","aws_s3_export_bucket")
+        self.aws_import_access_key_id = self.loadConfigFilename(awsConfig, 'awsConfig', 'aws_import_access_key_id')
+        self.aws_import_secret_access_key = self.loadConfigFilename(awsConfig, 'awsConfig', 'aws_import_secret_access_key')
+        self.aws_import_session_token = self.loadConfigFilename(awsConfig, 'awsConfig', 'aws_import_session_token')
 
         #DFW
         self.dfw_export             = self.loadConfigFlag(config,"exportConfig","dfw_export")
@@ -1773,7 +1782,30 @@ class VMCImportExport:
                     response = requests.post(my_url, headers=my_header)
                     if response.status_code == 200:
                         result = "SUCCESS"
-                        print('Enabled Managed Prefix List Mode. Proceed to the AWS Management Console and Resource Access Manager to accept the share')
+                        print('Enabling Managed Prefix List Mode.')
+                        if self.automate_ram_acceptance is True:
+                            time.sleep(20)
+                            ram_response = self.aws_ram_accept(vpc_id)
+                            if ram_response is True:
+                                linked_vpn_url = f'{self.proxy_url}/cloud-service/api/v1/linked-vpcs/{vpc_id}'
+                                vpc_resp_json = self.invokeCSPGET(linked_vpn_url)
+                                vpc_resp = vpc_resp_json.json()
+                                mpl_status = vpc_resp['linked_vpc_managed_prefix_list_info']['managed_prefix_list_mode']
+                                while mpl_status != "ENABLED":
+                                    print(f'Waiting for MPL to be enabled')
+                                    time.sleep(20)
+                                    vpc_resp_json = self.invokeCSPGET(linked_vpn_url)
+                                    vpc_resp = vpc_resp_json.json()
+                                    mpl_status = vpc_resp['linked_vpc_managed_prefix_list_info']['managed_prefix_list_mode']
+                                if mpl_status == "ENABLED" and self.automate_vpc_route_table_programming is True:
+                                    rt_lst = m['linked_vpc_managed_prefix_list_info']['managed_prefix_lists'][0]['programming_info']['route_table_ids']
+                                    active_eni = vpc_resp['linked_vpc_managed_prefix_list_info']['managed_prefix_lists'][0]['programming_info']['active_eni']
+                                    prefix_list_id = vpc_resp['linked_vpc_managed_prefix_list_info']['managed_prefix_lists'][0]['id']
+                                    vpc_resp = self.vpc_rt_prog(rt_lst, active_eni, prefix_list_id)
+                            else:
+                                print('Resourse share acceptance failed.  Continuing with import, please check the AWS Management Console')
+                        else:
+                            print('Proceed to the AWS Management Console and the Resource Access Manager service to accept the share')
                     else:
                         self.error_handling(response)
                         result = "FAIL"
@@ -1784,6 +1816,62 @@ class VMCImportExport:
                 print(f'Source SDDC did not have Managed Prefix List enabled...skipping')
                 pass
 
+
+    def aws_ram_accept(self, vpc_id):
+        """Function to accept Resource Access Share"""
+        self.vmc_auth.check_access_token_expiration()
+        my_header = {"Content-Type": "application/json", "Accept": "application/json", "csp-auth-token": self.vmc_auth.access_token}
+        my_url = f'{self.proxy_url}/cloud-service/api/v1/linked-vpcs/{vpc_id}'
+        response = requests.get(my_url, headers=my_header)
+        json_response = response.json()
+        ram_arn = []
+        ram_arn.append(json_response['linked_vpc_managed_prefix_list_info']['aws_resource_share_info']['aws_resource_share_arn'])
+
+        if self.aws_import_session_token:
+            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key, aws_session_token=self.aws_import_session_token)
+        else:
+            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key)
+        
+        ram = session.client('ram')
+
+        ram_share_arn = ram.get_resource_share_invitations(resourceShareArns=ram_arn)
+        ram_arn_id = ram_share_arn['resourceShareInvitations'][0]['resourceShareInvitationArn']
+        ram_response = ram.accept_resource_share_invitation(resourceShareInvitationArn=ram_arn_id)
+
+        ram_status = ram_response['resourceShareInvitation']['status']
+        match ram_status:
+            case 'ACCEPTED':
+                print (f'Resource Share {ram_response["resourceShareInvitation"]["resourceShareName"]} accepted.  Managed Prefix List has been accepted.')
+                return True
+            case 'REJECTED':
+                print (f'Resource Share {ram_response["resourceShareInvitation"]["resourceShareName"]} has been rejected.  Please check your AWS credentials.')
+                return False
+            case 'EXPIRED':
+                print (f'The resource share {ram_response["resourceShareInvitation"]["resourceShareName"]} has expired.  Please try again.')
+                return False
+            case other:
+                print (f'An unknown error has occured.')
+                return False
+
+
+    def vpc_rt_prog(self, rt_lst, active_eni, prefix_list_id):
+        """Function to program linked VPC route tables"""
+        self.vmc_auth.check_access_token_expiration()
+
+        if self.aws_import_session_token:
+            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key, aws_session_token=self.aws_import_session_token)
+        else:
+            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key)
+        
+        vpc = session.client('ec2')
+
+        for r in rt_lst:
+            response = vpc.create_route(RouteTableId=r, DestinationPrefixListId=prefix_list_id, NetworkInterfaceId=active_eni)
+            if response['Return'] == True:
+                print(f'VPC Route Table {r} has been programmed with MPL')
+        else:
+            print('Route application failure')
+            
 
     def import_ral(self):
         """Import SDDC Route Aggregation lists from JSON"""
