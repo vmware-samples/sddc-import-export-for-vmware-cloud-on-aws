@@ -2508,14 +2508,6 @@ class VMCImportExport:
                         return {x: d[x] for x in d if x in keys}
                     json_data = without_keys(profile, keep_keys)
 
-                    # json_data['resource_type']= "IdsProfile"
-                    # json_data['id'] = profile['id']
-                    # json_data['display_name'] = profile['display_name']
-                    # if profile["profile_severity"]:
-                    #     json_data['profile_severity'] = profile["profile_severity"]
-                    # if profile["criteria"]:
-                    #     json_data['criteria'] = profile["criteria"]
-
                     if self.import_mode == "live":
                         myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
                         my_url = f'{self.proxy_url}/policy/api/v1/infra/settings/firewall/security/intrusion-services/profiles/{profile["display_name"]}'
