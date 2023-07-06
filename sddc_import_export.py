@@ -302,8 +302,6 @@ def main(args):
                         grp_name = f'cgw-test-group-{i:04}'
                         retval = ioObj.deleteSDDCCGWGroup(grp_name)
 
-
-
     if intent_name == "import-vcenter":
         no_intent_found = False
         if ioObj.import_vcenter_folders:
@@ -642,6 +640,22 @@ def main(args):
                 print("NAT rules export error: {}".format(ioObj.lastJSONResponse))
         else:
             print("NAT rules export skipped.")
+
+        if ioObj.nsx_adv_fw_export is True:
+            if (ioObj.cgw_export is False):
+                print("NSX Advanced Firewall export is enabled, but CGW export is not.")
+                print("Please enable export of Compute Gateway settings to capture all CGW Groups, else import of NSX AF settings and rules may fail.")
+                print("Exiting.")
+                sys.exit()
+            print("Beginning NSX Advanced Firewall export...")
+            retval = ioObj.export_advanced_firewall()
+            if retval is True:
+                print("NSX Advanced Firewall exported.")
+            else:
+                print("NSX Advanced Firewall export error: {}.".format(ioObj.lastJSONResponse))
+        else:
+            print("NSX Advanced Firewall export skipped.")
+
 
         if ioObj.service_access_export is True:
             print("Beginning Service Access export...")

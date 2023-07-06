@@ -284,8 +284,21 @@ class VMCImportExport:
 
         #Advanced Firewall
         self.nsx_adv_fw_export      = self.loadConfigFlag(config,"exportConfig","nsx_adv_fw_export")
-        self.nsx_adv_fw_import      = self.loadConfigFlag(config,"importConfig","nsx_adv_fw_import")
-        self.nsx_adv_fw_allow_enable    = self.loadConfigFlag(config,"importConfig","nsx_adv_fw_allow_enable")
+        self.nsx_adv_fw_settings_export_filename = self.loadConfigFilename(config,"exportConfig","nsx_adv_fw_settings_export_filename")
+        self.nsx_adv_fw_sigs_export_filename = self.loadConfigFilename(config, "exportConfig","nsx_adv_fw_sigs_export_filename")
+        self.nsx_adv_fw_profiles_export_filename = self.loadConfigFilename(config,"exportConfig","nsx_adv_fw_profiles_export_filename")
+        self.nsx_adv_fw_policies_export_filename = self.loadConfigFilename(config,"exportConfig","nsx_adv_fw_policies_export_filename")
+        self.nsx_adv_fw_rules_export_filename = self.loadConfigFilename(config,"exportConfig","nsx_adv_fw_rules_export_filename")
+
+        self.nsx_adv_fw_import = self.loadConfigFlag(config,"importConfig","nsx_adv_fw_import")
+        self.nsx_adv_fw_allow_enable = self.loadConfigFlag(config,"importConfig","nsx_adv_fw_allow_enable")
+        self.nsx_adv_fw_settings_import_filename = self.loadConfigFilename(config,"importConfig","nsx_adv_fw_settings_import_filename")
+        # self.nsx_adv_fw_sigs_import_filename = self.loadConfigFilename(config, "importConfig","nsx_adv_fw_sigs_import_filename")
+        self.nsx_adv_fw_profiles_import_filename = self.loadConfigFilename(config,"importConfig","nsx_adv_fw_profiles_import_filename")
+        self.nsx_adv_fw_policies_import_filename = self.loadConfigFilename(config,"importConfig","nsx_adv_fw_policies_import_filename")
+        self.nsx_adv_fw_rules_import_filename = self.loadConfigFilename(config,"importConfig","nsx_adv_fw_rules_import_filename")
+
+
 
         #SDDC Info
         self.sddc_info_filename     = self.loadConfigFilename(config,"exportConfig","sddc_info_filename")
@@ -866,7 +879,6 @@ class VMCImportExport:
             json.dump(mcgw_fw_policy_json, outfile, indent=4)
         return True
 
-
     def export_mpl(self):
         """Exports Connected VPC Managed Prefix List"""
         my_url = f'{self.proxy_url}/cloud-service/api/v1/infra/linked-vpcs'
@@ -881,6 +893,117 @@ class VMCImportExport:
             json.dump(mpl_response, outfile, indent=4)
         return True
 
+    def export_advanced_firewall(self):
+        """Exports NSX Advanced Firewall settings, profiles, policies and rules"""
+        successval = True
+
+        retval = self.export_nsx_adv_fw_settings()
+        if retval is False:
+            successval = False
+            print('NSX Advanced Firewall settings export failure: ', self.lastJSONResponse)
+        else:
+            print('NSX Advanced Firewall settings exported.')
+
+        retval = self.export_nsx_adv_fw_exclusions()
+        if retval is False:
+            successval = False
+            print('NSX Advanced Firewall exclusion export failure: ', self.lastJSONResponse)
+        elif retval is None:
+            print("No exclusions to export.")
+        else:
+            print('NSX Advanced Firewall exclusions exported.')
+
+        retval = self.export_ids_profiles()
+        if retval is False:
+            successval = False
+            print('NSX Advanced Firewall profiles export failure: ', self.lastJSONResponse)
+        else:
+            print('NSX Advanced Firewall profiles exported.')
+
+        retval = self.export_ids_policies()
+        if retval[0] is False:
+            successval = False
+            print('NSX Advanced Firewall policies export failure: ', self.lastJSONResponse)
+        else:
+            print('NSX Advanced Firewall policies exported.')
+            pol_count = retval[1]
+            pol_list = retval[2]
+            rule_set = []
+            if pol_count == 0:
+                print("There are no policies and therefore no rules to export - skipping NSX Adv FW rules.")
+                return successval
+            else:
+                for policy in pol_list:
+                    retval = self.export_ids_rules(policy)
+                    if retval[0] is False:
+                        successval = False
+                        print('NSX Advanced Firewall rules export failure: ', self.lastJSONResponse)
+                    else:
+                        rule_set.append(retval[1])
+                        print(f'NSX Advanced Firewall rules exported for policy {policy}.')
+            fname = self.export_path / f'{self.nsx_adv_fw_rules_export_filename}'
+            with open(fname, 'w') as outfile:
+                json.dump(rule_set, outfile,indent=4)
+            return successval
+
+    def export_nsx_adv_fw_settings(self):
+        my_url = f'{self.proxy_url_short}/policy/api/v1/infra/settings/firewall/security/intrusion-services'
+        response = self.invokeCSPGET(my_url)
+        if response is None or response.status_code != 200:
+            return False
+        json_response = response.json()
+        fname = self.export_path / self.nsx_adv_fw_settings_export_filename
+        with open(fname, 'w') as outfile:
+            json.dump(json_response, outfile,indent=4)
+        return True
+
+    def export_nsx_adv_fw_exclusions(self):
+        my_url = f'{self.proxy_url_short}/policy/api/v1/infra/settings/firewall/security/intrusion-services/global-signatures'
+        response = self.invokeCSPGET(my_url)
+        if response is None or response.status_code != 200:
+            return False
+        json_response = response.json()
+        if json_response['results']:
+            nsxaf_sigs = json_response['results']
+            fname = self.export_path / self.nsx_adv_fw_sigs_export_filename
+            with open(fname, 'w') as outfile:
+                json.dump(nsxaf_sigs, outfile,indent=4)
+            return True
+        else:
+            return None
+
+    def export_ids_profiles(self):
+        my_url = f'{self.proxy_url_short}/policy/api/v1/infra/settings/firewall/security/intrusion-services/profiles'
+        response = self.invokeCSPGET(my_url)
+        if response is None or response.status_code != 200:
+            return False
+        json_response = response.json()
+        nsxaf_profiles = json_response['results']
+        fname = self.export_path / self.nsx_adv_fw_profiles_export_filename
+        with open(fname, 'w') as outfile:
+            json.dump(nsxaf_profiles, outfile,indent=4)
+        return True
+
+    def export_ids_policies(self):
+        my_url = f'{self.proxy_url_short}/policy/api/v1/infra/domains/cgw/intrusion-service-policies'
+        response = self.invokeCSPGET(my_url)
+        json_response = response.json()
+        nsxaf_policies = json_response['results']
+        policy_count = json_response['result_count']
+        fname = self.export_path / self.nsx_adv_fw_policies_export_filename
+        with open(fname, 'w') as outfile:
+            json.dump(nsxaf_policies, outfile,indent=4)
+        policy_list=[]
+        for policy in nsxaf_policies:
+            policy_list.append(policy['id'])
+        return True, policy_count, policy_list
+
+    def export_ids_rules(self, ids_policy_name):
+        my_url = f'{self.proxy_url_short}/policy/api/v1/infra/domains/cgw/intrusion-service-policies/{ids_policy_name}/rules'
+        response = self.invokeCSPGET(my_url)
+        json_response = response.json()
+        nsxaf_rules = json_response['results'][0]
+        return True, nsxaf_rules
 
     def export_ral(self):
         """Exports the SDDCs Route Aggregation List(s)"""
@@ -2201,6 +2324,73 @@ class VMCImportExport:
 
             return True
 
+    def import_advanced_firewall(self):
+        """Imports NSX Advanced Firewall settings, profiles, policies and rules"""
+        self.vmc_auth.check_access_token_expiration()
+        if self.dest_sddc_enable_nsx_advanced_addon is False:
+            if self.nsx_adv_fw_allow_enable is True:
+                print("nsx_adv_fw_allow_enable set to True, attempting to enable the NSX Advanced Firewall in the destination SDDC...")
+                retval = self.enable_advanced_firewall_dest()
+                if retval is False:
+                    print("ERROR - Failed to enable NSX Advanced Firewall - unable to import")
+                    return
+                print("NSX advanced firewall has been enabled.")
+            else:
+                print("ERROR - Unable to import advanced firewall config - the advanced firewall add-on is disabled in the destination SDDC. You can try to automatically enable the feature with the `nsx_adv_fw_allow_enable` flag in config.ini")
+                return
+
+        # wait 5 seconds before proceeding or you will get an error; service needs time to activate on NSX manager.
+        time.sleep(5)
+
+        # import setting JSON
+        # capture the following from settings:
+        #   "oversubscription": "DROPPED" - used to avoid triggering bug!  must be set before autoupdate
+        #   "auto_update": use for evaluating configuration of auto update
+        #   "resource_type": "IdsSettings" - used to set NSX AF values
+        #   "path": "/infra/settings/firewall/security/intrusion-services"
+
+        # Enable auto update
+        retval = self.enable_nsx_ids_auto_update()
+        if retval is False:
+            print('NSX Advanced Firewall autoupdate failed: ', self.lastJSONResponse)
+        else:
+            print('NSX Advanced Firewall autoupdate configured successfully.')
+        # Update signatures
+        retval = self.nsx_ids_update_signatures()
+        if retval is False:
+            print('Automatic update of NSX Advanced Firewall signatures failed: ', self.lastJSONResponse)
+        else:
+            print('NSX Advanced Firewall signature update initiated.')
+
+        # Enable all clusters
+        retval = self.enable_nsx_ids_all_clusters()
+        if retval is False:
+            print('NSX Advanced Firewall cluster enable failed: ', self.lastJSONResponse)
+        else:
+            print('NSX Advanced Firewall clusters enabled successfully.')
+        
+        # Import NSX AF IDS profiles
+        # skip the import of system-created profile(s)
+        retval = self.patch_ips_profile()
+        if retval is False:
+            print('NSX Advanced Firewall profile import failed: ', self.lastJSONResponse)
+        else:
+            print('NSX Advanced Firewall profiles imported.')
+
+        # Import NSX AF IDS policies
+        retval = self.put_ids_policy()
+        if retval is False:
+            print('NSX Advanced Firewall policy import failed: ', self.lastJSONResponse)
+        else:
+            print('NSX Advanced Firewall policies imported.')
+
+        # Import NSX AF IDS rules
+        retval = self.put_ids_rule()
+        if retval is False:
+            print('NSX Advanced Firewall rule import failed: ', self.lastJSONResponse)
+        else:
+            print('NSX Advanced Firewall rules imported.')
+
     def enable_advanced_firewall_dest(self) -> bool:
         """Enable the NSX advanced firewall in the destination SDDC"""
         self.vmc_auth.check_access_token_expiration()
@@ -2213,28 +2403,206 @@ class VMCImportExport:
                 print(f'API Call Status {response.status_code}, text:{response.text}')
                 return False
             else:
-                print(f'Enabled NSX Advanced Firewall in dest SDDC {self.dest_sddc_id}')
+                print(f'Enabled NSX Advanced Firewall in dest SDDC {self.dest_sddc_id}')    
         else:
             print(f'TEST MODE - Would have enabled NSX Advanced Firewall in SDDC {self.dest_sddc_id}')
 
         return True
 
-    def import_advanced_firewall(self):
-        self.vmc_auth.check_access_token_expiration()
-        if self.dest_sddc_enable_nsx_advanced_addon is False:
-            if self.nsx_adv_fw_allow_enable is True:
-                print("nsx_adv_fw_allow_enable set to True, attempting to enable the NSX Advanced Firewall in the destination SDDC...")
-                retval = self.enable_advanced_firewall_dest()
-                if retval is False:
-                    print("ERROR - Failed to enable NSX Advanced Firewall - unable to import")
-                    return
+    def enable_nsx_ids_auto_update(self):
+        myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
+        # myURL = f"{self.proxy_url_short}/policy/api/v1/infra/settings/firewall/security/intrusion-services"
+        myURL = f'{self.proxy_url_short}/policy/api/v1/infra/settings/firewall/security/intrusion-services'
+        json_data = {
+            "auto_update": True,
+            "oversubscription": "DROPPED"
+            }
+        response = requests.patch(myURL, headers=myHeader, json=json_data)
+        status = response.status_code
+        if status == 202:
+            return response
+        else:
+           self.error_handling(response)
+           return False     
 
-                print("NSX advanced firewall has been enabled.")
-            else:
-                print("ERROR - Unable to import advanced firewall config - the advanced firewall add-on is disabled in the destination SDDC. You can try to automatically enable the feature with the `nsx_adv_fw_allow_enable` flag in config.ini")
-                return
+    def nsx_ids_update_signatures(self):
+        myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
+        myURL = f"{self.proxy_url_short}/policy/api/v1/infra/settings/firewall/security/intrusion-services/signatures?action=update_signatures"
+        response = requests.post(myURL, headers=myHeader)
+        status = response.status_code
+        if status == 202:
+            return response
+        else:
+           self.error_handling(response)
+           return False     
 
-        print("Feature not implemented")
+    def enable_nsx_ids_all_clusters(self):
+        clusters_json = self.get_nsx_ids_cluster_enabled()
+        if clusters_json is not None:
+            cluster_array = clusters_json['results']
+            for i in cluster_array:
+                targetID = i['id']
+                ids_status = i['ids_enabled']
+                if ids_status == False:
+                    json_body = {
+                        "ids_enabled": True,
+                        "cluster": {
+                            "target_id": targetID
+                        }
+                    }
+                    response = self.enable_nsx_ids_cluster(targetID, json_body)
+                    if response.status_code != 200:
+                        print("Something went wrong.  Please check your syntax and try again.")
+                        sys.exit(1)
+                    else:
+                        pass
+                else:
+                    pass
+        else:
+            print("Something went wrong.  Please check your syntax and try again.")
+            sys.exit(1)
+
+    def get_nsx_ids_cluster_enabled(self):
+        myURL = f"{self.proxy_url_short}/policy/api/v1/infra/settings/firewall/security/intrusion-services/cluster-configs"
+        myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
+        response = requests.get(myURL, headers=myHeader)
+        if response.status_code == 200:
+            json_response = response.json()
+            return json_response
+        else:
+            print("There was an error. Check the syntax.")
+            print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+            print(json_response['error_message'])
+            return None
+
+    def enable_nsx_ids_cluster(self, targetID, json_data):
+        myURL = f"{self.proxy_url_short}/policy/api/v1/infra/settings/firewall/security/intrusion-services/cluster-configs/{targetID}"
+        myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
+        response = requests.patch(myURL, headers=myHeader, json=json_data)
+        if response.status_code == 200:
+            return response
+        else:
+            print("There was an error. Check the syntax.")
+            print (f'API call failed with status code {response.status_code}. URL: {myURL}.')
+            print(response['error_message'])
+            return None
+
+    def patch_ips_profile(self):
+        # self.vmc_auth.check_access_token_expiration()
+        fname = self.import_path / self.nsx_adv_fw_profiles_import_filename
+        try:
+            with open(fname) as filehandle:
+                profiles = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {fname}')
+            return
+        for profile in profiles:
+            if profile:
+                json_data = {}
+                if profile['_create_user'] == "system":
+                    pass
+                else:
+                    # stage the necessary JSON payload
+                    keep_keys = ["resource_type", "id", "display_name", "profile_severity", "criteria"]
+                    def without_keys(d, keys):
+                        return {x: d[x] for x in d if x in keys}
+                    json_data = without_keys(profile, keep_keys)
+
+                    # json_data['resource_type']= "IdsProfile"
+                    # json_data['id'] = profile['id']
+                    # json_data['display_name'] = profile['display_name']
+                    # if profile["profile_severity"]:
+                    #     json_data['profile_severity'] = profile["profile_severity"]
+                    # if profile["criteria"]:
+                    #     json_data['criteria'] = profile["criteria"]
+
+                    if self.import_mode == "live":
+                        myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
+                        my_url = f'{self.proxy_url}/policy/api/v1/infra/settings/firewall/security/intrusion-services/profiles/{profile["display_name"]}'
+                        if self.sync_mode is True:
+                            response = requests.patch(my_url, headers=myHeader, json=json_data)
+                        else:
+                            response = requests.put(my_url, headers=myHeader, json=json_data)
+                        if response.status_code == 200:
+                            result = "SUCCESS"
+                            print('Added {}'.format(json_data['display_name']))
+                        else:
+                            result = "FAIL"
+                            self.error_handling(response)
+                    else:
+                        print(f'TEST MODE - IDS profile {profile["display_name"]} would have been imported.')
+
+    def put_ids_policy(self):
+        fname = self.import_path / self.nsx_adv_fw_policies_import_filename
+        try:
+            with open(fname) as filehandle:
+                policies = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {fname}')
+            return
+        for pol in policies:
+            if pol:
+                json_data = {}
+                if pol['_create_user'] == "system":
+                    pass
+                else:
+                    # stage the necessary JSON payload
+                    json_data['resource_type']= "IdsSecurityPolicy"
+                    json_data['id'] = pol['id']
+                    json_data['display_name'] = pol['display_name']
+                    # print(json.dumps(json_data, indent=2))
+
+                    if self.import_mode == "live":
+                        myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
+                        my_url = f'{self.proxy_url}/policy/api/v1/infra/domains/cgw/intrusion-service-policies/{pol["display_name"]}'
+                        if self.sync_mode is True:
+                            response = requests.patch(my_url, headers=myHeader, json=json_data)
+                        else:
+                            response = requests.put(my_url, headers=myHeader, json=json_data)
+                        if response.status_code == 200:
+                            result = "SUCCESS"
+                            print('Added {}'.format(json_data['display_name']))
+                        else:
+                            result = "FAIL"
+                            self.error_handling(response)
+                    else:
+                        print(f'TEST MODE - IDS policy {pol["display_name"]} would have been imported.')
+
+    def put_ids_rule(self):
+        fname = self.import_path / self.nsx_adv_fw_rules_import_filename
+        try:
+            with open(fname) as filehandle:
+                rules = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {fname}')
+            return
+        for rule in rules:
+            if rule:
+                if rule['_create_user'] == "system":
+                    pass
+                else:
+                    policy_name = rule['parent_path'][46:]
+                    print(policy_name)
+                    keep_keys = ["action", "ids_profiles", "resource_type", "id", "display_name", "sources_excluded", "destinations_excluded", "source_groups", "destination_groups", "services", "scope", "direction", "tag", "ip_protocol"]
+                    def without_keys(d, keys):
+                        return {x: d[x] for x in d if x in keys}
+                    json_data = without_keys(rule, keep_keys)
+
+                    if self.import_mode == "live":
+                        myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
+                        my_url = f'{self.proxy_url_short}/policy/api/v1/infra/domains/cgw/intrusion-service-policies/{policy_name}/rules/{rule["display_name"]}'
+                        if self.sync_mode is True:
+                            response = requests.patch(my_url, headers=myHeader, json=json_data)
+                        else:
+                            response = requests.put(my_url, headers=myHeader, json=json_data)
+                        if response.status_code == 200:
+                            result = "SUCCESS"
+                            print('Added {}'.format(json_data['display_name']))
+                        else:
+                            result = "FAIL"
+                            self.error_handling(response)
+                    else:
+                        print(f'TEST MODE - IDS rule {rule["display_name"]} would have been imported.')
 
     def importSDDCCGWRule(self):
         """Import all CGW Rules from a JSON file"""
