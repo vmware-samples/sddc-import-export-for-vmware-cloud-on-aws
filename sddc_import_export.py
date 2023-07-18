@@ -642,7 +642,7 @@ def main(args):
             print("NAT rules export skipped.")
 
         if ioObj.nsx_adv_fw_export is True:
-            if (ioObj.cgw_export is False):
+            if (ioObj.cgw_export is False or ioObj.network_export is False):
                 print("NSX Advanced Firewall export is enabled, but CGW export is not.")
                 print("Please enable export of Compute Gateway settings to capture all CGW Groups, else import of NSX AF settings and rules may fail.")
                 print("Exiting.")
@@ -949,6 +949,12 @@ def main(args):
             ioObj.importVPN()
 
         if ioObj.nsx_adv_fw_import is True:
+            if (ioObj.cgw_import is False):
+                print("NSX Advanced Firewall export is enabled, but CGW export is not.")
+                print("Please enable export of Compute Gateway settings to capture all CGW Groups and segments, else import of NSX AF settings and rules may fail.")
+                print("Exiting.")
+                sys.exit()
+
             print("Beginning NSX advanced firewall import...")
             ioObj.import_advanced_firewall()
 

@@ -2539,10 +2539,10 @@ class VMCImportExport:
                     pass
                 else:
                     # stage the necessary JSON payload
-                    json_data['resource_type']= "IdsSecurityPolicy"
-                    json_data['id'] = pol['id']
-                    json_data['display_name'] = pol['display_name']
-                    # print(json.dumps(json_data, indent=2))
+                    keep_keys = ["resource_type", "id", "display_name", "category"]
+                    def without_keys(d, keys):
+                        return {x: d[x] for x in d if x in keys}
+                    json_data = without_keys(pol, keep_keys)
 
                     if self.import_mode == "live":
                         myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
