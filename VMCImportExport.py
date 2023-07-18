@@ -2417,24 +2417,30 @@ class VMCImportExport:
             "auto_update": True,
             "oversubscription": "DROPPED"
             }
-        response = requests.patch(myURL, headers=myHeader, json=json_data)
-        status = response.status_code
-        if status == 202:
-            return response
+        if self.import_mode == "live":
+            response = requests.patch(myURL, headers=myHeader, json=json_data)
+            status = response.status_code
+            if status == 202:
+                return response
+            else:
+            self.error_handling(response)
+            return False
         else:
-           self.error_handling(response)
-           return False     
+            print(f'TEST MODE - Would have enabled signature auto-update for NSX Advanced Firewall in SDDC {self.dest_sddc_id}')
 
     def nsx_ids_update_signatures(self):
         myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
         myURL = f"{self.proxy_url_short}/policy/api/v1/infra/settings/firewall/security/intrusion-services/signatures?action=update_signatures"
-        response = requests.post(myURL, headers=myHeader)
-        status = response.status_code
-        if status == 202:
-            return response
+        if self.import_mode == "live":
+            response = requests.post(myURL, headers=myHeader)
+            status = response.status_code
+            if status == 202:
+                return response
+            else:
+            self.error_handling(response)
+            return False     
         else:
-           self.error_handling(response)
-           return False     
+            print(f'TEST MODE - Would have updated signatures for NSX Advanced Firewall in SDDC {self.dest_sddc_id}')
 
     def enable_nsx_ids_all_clusters(self):
         clusters_json = self.get_nsx_ids_cluster_enabled()
@@ -2450,12 +2456,15 @@ class VMCImportExport:
                             "target_id": targetID
                         }
                     }
-                    response = self.enable_nsx_ids_cluster(targetID, json_body)
-                    if response.status_code != 200:
-                        print("Something went wrong.  Please check your syntax and try again.")
-                        sys.exit(1)
+                    if self.import_mode == "live":
+                        response = self.enable_nsx_ids_cluster(targetID, json_body)
+                        if response.status_code != 200:
+                            print("Something went wrong.  Please check your syntax and try again.")
+                            sys.exit(1)
+                        else:
+                            pass
                     else:
-                        pass
+                        print(f'TEST MODE - Would have enabled NSX Advanced Firewall on cluster {targetID}')
                 else:
                     pass
         else:

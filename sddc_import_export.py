@@ -644,9 +644,7 @@ def main(args):
         if ioObj.nsx_adv_fw_export is True:
             if (ioObj.cgw_export is False or ioObj.network_export is False):
                 print("NSX Advanced Firewall export is enabled, but CGW export is not.")
-                print("Please enable export of Compute Gateway settings to capture all CGW Groups, else import of NSX AF settings and rules may fail.")
-                print("Exiting.")
-                sys.exit()
+                print("Please enable export of Compute Gateway settings to capture all CGW Groups AND Segments, else import of NSX AF settings and rules may fail.")
             print("Beginning NSX Advanced Firewall export...")
             retval = ioObj.export_advanced_firewall()
             if retval is True:
@@ -952,8 +950,6 @@ def main(args):
             if (ioObj.cgw_import is False):
                 print("NSX Advanced Firewall export is enabled, but CGW export is not.")
                 print("Please enable export of Compute Gateway settings to capture all CGW Groups and segments, else import of NSX AF settings and rules may fail.")
-                print("Exiting.")
-                sys.exit()
 
             print("Beginning NSX advanced firewall import...")
             ioObj.import_advanced_firewall()
