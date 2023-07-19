@@ -2423,7 +2423,7 @@ class VMCImportExport:
             if status == 202:
                 return response
             else:
-            self.error_handling(response)
+                self.error_handling(response)
             return False
         else:
             print(f'TEST MODE - Would have enabled signature auto-update for NSX Advanced Firewall in SDDC {self.dest_sddc_id}')
@@ -2437,7 +2437,7 @@ class VMCImportExport:
             if status == 202:
                 return response
             else:
-            self.error_handling(response)
+                self.error_handling(response)
             return False     
         else:
             print(f'TEST MODE - Would have updated signatures for NSX Advanced Firewall in SDDC {self.dest_sddc_id}')
