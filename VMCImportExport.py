@@ -2528,7 +2528,8 @@ class VMCImportExport:
 
                     if self.import_mode == "live":
                         myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
-                        my_url = f'{self.proxy_url}/policy/api/v1/infra/settings/firewall/security/intrusion-services/profiles/{profile["display_name"]}'
+                        #'Path' key is grabbed the exported JSON                        
+                        my_url = f'{self.proxy_url}/policy/api/v1{profile["path"]}'
                         if self.sync_mode is True:
                             response = requests.patch(my_url, headers=myHeader, json=json_data)
                         else:
@@ -2564,7 +2565,8 @@ class VMCImportExport:
 
                     if self.import_mode == "live":
                         myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
-                        my_url = f'{self.proxy_url}/policy/api/v1/infra/domains/cgw/intrusion-service-policies/{pol["display_name"]}'
+                        #'Path' key is grabbed the exported JSON
+                        my_url = f'{self.proxy_url}/policy/api/v1{pol["path"]}'
                         if self.sync_mode is True:
                             response = requests.patch(my_url, headers=myHeader, json=json_data)
                         else:
@@ -2591,8 +2593,6 @@ class VMCImportExport:
                 if rule['_create_user'] == "system":
                     pass
                 else:
-                    policy_name = rule['parent_path'][46:]
-                    print(policy_name)
                     keep_keys = ["action", "ids_profiles", "resource_type", "id", "display_name", "sources_excluded", "destinations_excluded", "source_groups", "destination_groups", "services", "scope", "direction", "tag", "ip_protocol"]
                     def without_keys(d, keys):
                         return {x: d[x] for x in d if x in keys}
@@ -2600,7 +2600,8 @@ class VMCImportExport:
 
                     if self.import_mode == "live":
                         myHeader = {"Authorization":"Bearer " + self.vmc_auth.access_token}
-                        my_url = f'{self.proxy_url_short}/policy/api/v1/infra/domains/cgw/intrusion-service-policies/{policy_name}/rules/{rule["display_name"]}'
+                        #'Path' key is grabbed the exported JSON
+                        my_url = f'{self.proxy_url_short}/policy/api/v1{rule["path"]}'
                         if self.sync_mode is True:
                             response = requests.patch(my_url, headers=myHeader, json=json_data)
                         else:
@@ -2613,6 +2614,7 @@ class VMCImportExport:
                             self.error_handling(response)
                     else:
                         print(f'TEST MODE - IDS rule {rule["display_name"]} would have been imported.')
+
 
     def importSDDCCGWRule(self):
         """Import all CGW Rules from a JSON file"""
