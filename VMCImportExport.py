@@ -1907,7 +1907,6 @@ class VMCImportExport:
                         result = "SUCCESS"
                         print('Enabling Managed Prefix List Mode.')
                         if self.automate_ram_acceptance is True:
-                            time.sleep(20)
                             ram_response = self.aws_ram_accept(vpc_id)
                             if ram_response is True:
                                 linked_vpn_url = f'{self.proxy_url}/cloud-service/api/v1/linked-vpcs/{vpc_id}'
@@ -1947,6 +1946,16 @@ class VMCImportExport:
         my_url = f'{self.proxy_url}/cloud-service/api/v1/linked-vpcs/{vpc_id}'
         response = requests.get(my_url, headers=my_header)
         json_response = response.json()
+        mpl_info = json_response['linked_vpc_managed_prefix_list_info']
+        mpl_status = mpl_info.get('aws_resource_share_info')
+        
+        #wait for resource share to be created
+        while mpl_status == None:
+            response = requests.get(my_url, headers=my_header)
+            json_response = response.json()
+            mpl_info = json_response['linked_vpc_managed_prefix_list_info']
+            mpl_status = mpl_info.get('aws_resource_share_info')
+
         ram_arn = []
         ram_arn.append(json_response['linked_vpc_managed_prefix_list_info']['aws_resource_share_info']['aws_resource_share_arn'])
 
