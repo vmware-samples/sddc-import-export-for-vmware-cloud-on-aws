@@ -80,6 +80,7 @@ class VMCImportExport:
         self.aws_import_access_key_id = ""
         self.aws_import_secret_access_key = ""
         self.aws_import_session_token = ""
+        self.aws_dest_sddc_region = ""
         self.ConfigLoader()
 
     def ConfigLoader(self):
@@ -1907,6 +1908,7 @@ class VMCImportExport:
                         result = "SUCCESS"
                         print('Enabling Managed Prefix List Mode.')
                         if self.automate_ram_acceptance is True:
+                            self.get_sddc_region(self.dest_org_id, self.dest_sddc_id)
                             ram_response = self.aws_ram_accept(vpc_id)
                             if ram_response is True:
                                 linked_vpn_url = f'{self.proxy_url}/cloud-service/api/v1/linked-vpcs/{vpc_id}'
@@ -1960,9 +1962,9 @@ class VMCImportExport:
         ram_arn.append(json_response['linked_vpc_managed_prefix_list_info']['aws_resource_share_info']['aws_resource_share_arn'])
 
         if self.aws_import_session_token:
-            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key, aws_session_token=self.aws_import_session_token)
+            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key, aws_session_token=self.aws_import_session_token, region_name=self.aws_dest_sddc_region)
         else:
-            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key)
+            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key, region=self.aws_dest_sddc_region)
         
         ram = session.client('ram')
 
@@ -1991,9 +1993,9 @@ class VMCImportExport:
         self.vmc_auth.check_access_token_expiration()
 
         if self.aws_import_session_token:
-            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key, aws_session_token=self.aws_import_session_token)
+            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key, aws_session_token=self.aws_import_session_token, region_name=self.aws_dest_sddc_region)
         else:
-            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key)
+            session = boto3.Session(aws_access_key_id=self.aws_import_access_key_id, aws_secret_access_key=self.aws_import_secret_access_key, region_name=self.aws_dest_sddc_region)
         
         vpc = session.client('ec2')
 
@@ -2003,6 +2005,17 @@ class VMCImportExport:
                 print(f'VPC Route Table {r} has been programmed with MPL')
         else:
             print('Route application failure')
+    
+
+    def get_sddc_region(self, org_id, sddc_id):
+        """Get given SDDC region"""
+        self.vmc_auth.check_access_token_expiration()
+
+        sddc_info = self.loadSDDCData(org_id, sddc_id)
+        malformed_region_id = sddc_info['resource_config']['region']
+        malformed_region_id = malformed_region_id.replace("_", "-")
+        malformed_region_id = malformed_region_id.lower()
+        self.aws_dest_sddc_region = malformed_region_id
             
 
     def import_ral(self):
