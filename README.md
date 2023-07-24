@@ -39,8 +39,7 @@ The SDDC Import/Export for VMware Cloud on AWS tool enable customers to save and
 There are many situations when customers want to migrate from an existing SDDC to a different one. While HCX addresses the data migration challenge, this tool offers customers the ability to copy the configuration from a source to a destination SDDC.
 
 A few example migration scenarios are:
-- SDDC to SDDC migration from bare-metal (i3) to a different bare-metal type (i3en)
-- SDDC to SDDC migration from VMware-based org to an AWS-based org
+- SDDC to SDDC migration from bare-metal (i3) to a different bare-metal type (i3en, i4i)
 - SDDC to SDDC migration from region (i.e. London) to a different region (i.e. Dublin).
 
 Other use cases are:
@@ -140,6 +139,7 @@ Version 1.3 introduced the ability to filter out objects during an import. The f
 - CGW firewall rule
 - CGW firewall group
 - CGW network segment
+- Flexible segment
 - MGW firewall rule
 - MGW firewall group
 
@@ -177,6 +177,14 @@ aws_s3_export_access_id = ""
 aws_s3_export_access_secret = ""
 aws_s3_export_bucket = ""
 ```
+
+The aws.ini also includes an option to include credentials for the customer-owned AWS account connected to the SDDC.  This allows for automatic acceptance of a resource share for the managed prefix list feature as well as configuration of multiple VPC route tables.  This is separate from the S3 configuration above and must be filled out for the configuration to work correctly.  
+```
+aws_import_access_key_id = 
+aws_import_secret_access_key = 
+aws_import_session_token = 
+```
+
 The aws.ini configuration can also be passed via command line. Use sddc_import_export --help for syntax.
 
 ### 1.3.7. Update vcenter.ini (optional)
@@ -216,13 +224,22 @@ If all of the export options are enabled, this will export a set of files:
 -	cgw.json
 -   dfw_details.json
 -   dfw.json
+-   dhcp-static-bindings.json
+-   flex_seg_disc_prof.json
 -   flex_seg.json
--   mcgw.json
--   mcgw-fw.json
+-   mcgw_fw.json
 -   mcgw_static_routes.json
+-   mcgw.json
 -	mgw_groups.json
 -	mgw.json
+-   mpl.json
 -	natrules.json
+-   nsx_adv_fw_policies.json
+-   nsx_adv_fw_profiles.json
+-   nsx_adv_fw_rules.json
+-   nsx_adv_fw_settings.json
+-   nsx_adv_fw_sigs.json    
+-   public_ip_old_new.json
 -	public.json
 -   ral.json
 -   route_config.json
@@ -230,6 +247,9 @@ If all of the export options are enabled, this will export a set of files:
 -   sddc_info.json
 -   service_access.json
 -   services.json
+-   t1vpn.json
+-   t1vpn_service.json
+-   t1vpn_le.json
 -   vpn-bgp.json
 -   vpn-dpd.json
 -   vpn-ike.json
