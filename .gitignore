@@ -1,2 +1,8 @@
 *.json
 __pycache__
+.DS_Store
+CODE-OF-CONDUCT.md
+CONTRIBUTING.md
+LICENSE.txt
+NOTICE.txt
+venv-impexp

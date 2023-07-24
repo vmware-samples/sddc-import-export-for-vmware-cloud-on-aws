@@ -5,9 +5,8 @@
 
 # SDDC Import/Export for VMware Cloud on AWS
 
-
 ################################################################################
-### Copyright 2020-2021 VMware, Inc.
+### Copyright 2020-2023 VMware, Inc.
 ### SPDX-License-Identifier: BSD-2-Clause
 ################################################################################
 
@@ -39,7 +38,7 @@ With git BASH on Windows, you might need to use 'python -m pip install' instead 
 """
 import boto3
 import sys
-MIN_PYTHON = (3,6)
+MIN_PYTHON = (3,10)
 assert sys.version_info >= MIN_PYTHON, f"Python {'.'.join([str(n) for n in MIN_PYTHON])} or newer is required."
 
 import argparse
@@ -188,8 +187,8 @@ def main(args):
 
     if intent_name == "rolesync":
         no_intent_found = False
-        ioObj.getAccessToken(ioObj.source_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.source_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve source access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
         print (f'Looking up template user {ioObj.RoleSyncSourceUserEmail}')
@@ -203,8 +202,8 @@ def main(args):
                 retval = ioObj.convertServiceRolePayload(template_user_roles)
                 payload = {}
                 payload = ioObj.convertedServiceRolePayload
-                ioObj.getAccessToken(ioObj.dest_refresh_token)
-                if (ioObj.access_token == ""):
+                ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
+                if (ioObj.vmc_auth.access_token == ""):
                     print("Unable to retrieve source access token. Server response:{}".format(ioObj.lastJSONResponse))
                     sys.exit()
                 if ioObj.import_mode == "live":
@@ -238,8 +237,8 @@ def main(args):
 
         print('Testbed mode:',ioObj.import_mode)
 
-        ioObj.getAccessToken(ioObj.dest_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -303,8 +302,6 @@ def main(args):
                         grp_name = f'cgw-test-group-{i:04}'
                         retval = ioObj.deleteSDDCCGWGroup(grp_name)
 
-
-
     if intent_name == "import-vcenter":
         no_intent_found = False
         if ioObj.import_vcenter_folders:
@@ -347,8 +344,8 @@ def main(args):
         no_intent_found = False
         print('Import mode:', ioObj.import_mode)
 
-        ioObj.getAccessToken(ioObj.dest_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -399,8 +396,8 @@ def main(args):
     if intent_name == "check-vmc-ini":
         no_intent_found = False
 
-        ioObj.getAccessToken(ioObj.source_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.source_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -421,8 +418,8 @@ def main(args):
 
         print(f'Export configuration: Org {ioObj.source_org_display_name} ({ioObj.source_org_id}), SDDC {ioObj.source_sddc_name} ({ioObj.source_sddc_id}), SDDC version {ioObj.source_sddc_version}')
 
-        ioObj.getAccessToken(ioObj.dest_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -446,8 +443,9 @@ def main(args):
     if intent_name == "export" or intent_name == "export-import":
         no_intent_found = False
 
-        ioObj.getAccessToken(ioObj.source_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.source_refresh_token)
+        
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -562,6 +560,16 @@ def main(args):
         else:
             print("Multi-T1 Firewall Policy and Rules export skipped")
 
+        if ioObj.mpl_export is True:
+            print("Beginning Connected VPC Managed Prefix List export")
+            retval = ioObj.export_mpl()
+            if retval is True:
+                print("Connected VPC Managed Prefix List settings exported")
+            else:
+                print(f'Connected VPC Managed Prefix List export error: {ioObj.lastJSONResponse}')
+        else:
+            print("Connected VPC Managed Prefix List export skipped")
+
         if ioObj.ral_export is True:
             print('Beginning Route Aggegration list export')
             retval = ioObj.export_ral()
@@ -595,12 +603,13 @@ def main(args):
         if ioObj.flex_segment_export is True:
             print("Beginning flexible segment export...")
             retval = ioObj.export_flexible_segments()
-            if retval is True:
-                print("Flexible segment exported.")
+            retval2 = ioObj.export_flexible_segment_disc_bindings()
+            if retval is True and retval2 is True:
+                print("Flexible segment and segment discovery bindings exported.")
             else:
                 print(f"Flexible segment export error: {ioObj.lastJSONResponse}")
         else:
-            print("Flexible segment export skipped.")
+            print("Flexible segment and segment discovery profile bindings export skipped.")
 
         if ioObj.dfw_export is True:
             print("Beginning DFW export...")
@@ -632,6 +641,20 @@ def main(args):
         else:
             print("NAT rules export skipped.")
 
+        if ioObj.nsx_adv_fw_export is True:
+            if (ioObj.cgw_export is False or ioObj.network_export is False):
+                print("NSX Advanced Firewall export is enabled, but CGW export is not.")
+                print("Please enable export of Compute Gateway settings to capture all CGW Groups AND Segments, else import of NSX AF settings and rules may fail.")
+            print("Beginning NSX Advanced Firewall export...")
+            retval = ioObj.export_advanced_firewall()
+            if retval is True:
+                print("NSX Advanced Firewall exported.")
+            else:
+                print("NSX Advanced Firewall export error: {}.".format(ioObj.lastJSONResponse))
+        else:
+            print("NSX Advanced Firewall export skipped.")
+
+
         if ioObj.service_access_export is True:
             print("Beginning Service Access export...")
             retval = ioObj.exportServiceAccess()
@@ -651,6 +674,16 @@ def main(args):
                 print("VPN export error.")
         else:
             print("VPN export skipped.")
+
+        if ioObj.tier1_vpn_export is True:
+            print("Beginning export of Tier-1 VPNs")
+            retval = ioObj.export_tier1_vpn()
+            if retval is True:
+                print("Tier-1 VPNs exported")
+            else:
+                print("Tier-1 VPN export error")
+        else:
+            print("Tier-1 VPN export skipped.")
 
         if ioObj.export_history is True:
             retval = ioObj.zipJSONfiles()
@@ -738,8 +771,8 @@ def main(args):
 
         print('Import mode:',ioObj.import_mode)
 
-        ioObj.getAccessToken(ioObj.dest_refresh_token)
-        if (ioObj.access_token == ""):
+        ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
+        if (ioObj.vmc_auth.access_token == ""):
             print("Unable to retrieve access token. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
 
@@ -773,6 +806,15 @@ def main(args):
                     print("Import mode set to test")
                 else:
                     print("Live import will proceed")
+
+        if ioObj.enable_ipv6 is True:
+            ipv6_enable_status = ioObj.enable_sddc_ipv6()
+            if ipv6_enable_status is True:
+                print(f'IPv6 enabled on {ioObj.dest_sddc_name}')
+            else:
+                print(f'IPv6 not enabled on {ioObj.dest_sddc_name}')
+        else:
+            print('IPv6 enablement skipped')
 
         if ioObj.network_import is True:
             print("Beginning CGW network import...")
@@ -849,12 +891,22 @@ def main(args):
                 print('Tier-1 Gateway import is set to false, this can cause import error is Tier-1 Gateway objects are missing.')
             ioObj.import_mcgw_fw()
 
+        if ioObj.mpl_import is True:
+            print("Beginning import of Connected VPC Managed Prefix List configuration")
+            ioObj.import_mpl()
+        else:
+            print("Connected VPC Managed Prefix List import skipped...")
+
         if ioObj.ral_import is True:
             print('Beginning import of SDDC Route Aggregation Lists...')
+            if ioObj.mpl_import is False:
+                print("Managed Prefix List import is set to false.  If MPL is not enabled, Route Aggregation lists will not be imported successfully")
             ioObj.import_ral()
 
         if ioObj.route_config_import is True:
             print('Beginning import of SDDC Route Configurations...')
+            if ioObj.mpl_import is False:
+                print("Managed Prefix List import is set to false.  If MPL is not enabled, Route Configuration will not be imported successfully")
             if ioObj.ral_import is False:
                 print('Import of Route Configurations may be impacted by missing Route Aggregations lists')
             ioObj.import_route_config()
@@ -872,6 +924,7 @@ def main(args):
             import_table = ioObj.import_flex_segments()
             print("Import results:\n")
             print(import_table)
+            ioObj.import_flex_seg_disc_binding_map()
 
         if ioObj.public_import is True:
             print("Beginning Public IP import...")
@@ -894,12 +947,16 @@ def main(args):
             ioObj.importVPN()
 
         if ioObj.nsx_adv_fw_import is True:
+            if (ioObj.cgw_import is False):
+                print("NSX Advanced Firewall export is enabled, but CGW export is not.")
+                print("Please enable export of Compute Gateway settings to capture all CGW Groups and segments, else import of NSX AF settings and rules may fail.")
+
             print("Beginning NSX advanced firewall import...")
             ioObj.import_advanced_firewall()
 
         print("Import has been concluded. Thank you for using SDDC Import/Export for VMware Cloud on AWS.")
 
-    if no_intent_found == True:
+    if no_intent_found:
         print("\nWelcome to sddc_import_export!")
         print("\nHere are the currently supported commands: ")
         print("\nTo export your source SDDC to JSON")
