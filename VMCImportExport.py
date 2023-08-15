@@ -123,6 +123,7 @@ class VMCImportExport:
         self.export_type          = self.loadConfigFilename(config,"exportConfig","export_type")
         self.import_mode_live_warning = self.loadConfigFlag(config,"importConfig","import_mode_live_warning")
         self.enable_ipv6 = self.loadConfigFlag(config, 'importConfig', 'enable_ipv6')
+        self.cluster_rename = self.loadConfigFlag(config, 'importConfig', 'rename_clusters')
 
         # vCenter
         self.srcvCenterURL          =  vCenterConfig.get("vCenterConfig","srcvCenterURL")
@@ -2083,7 +2084,44 @@ class VMCImportExport:
                     self.error_handling(response)
             else:
                 print(f'TEST Mode - Route configuration {json_data["id"]} would have been imported')
+    
 
+    def rename_sddc_clusters(self):
+        """Renames destination SDDC clusters """
+        self.vmc_auth.check_access_token_expiration()
+        fname = self.import_path / self.sddc_info_filename
+        try:
+            with open (fname) as filehandle:
+                config = json.load(filehandle)
+        except:
+            print(f'Import failed - unable to open {fname}')
+            return False
+        cluster_data = config['resource_config']['clusters']
+        cluster_name_list = []
+        for c in cluster_data:
+            cluster_name_list.append(c['cluster_name'])
+        dest_sddc_json = self.loadSDDCData(self.dest_org_id, self.dest_sddc_id)
+        dest_cluster_config = dest_sddc_json['resource_config']['clusters']
+        if len(cluster_name_list) != len(dest_cluster_config):
+            print(f'Destination SDDC cluster configuration does not match the source SDDC cluster configuration.  Ensure the correct number of clusters are deployed to the destination SDDC')
+            return False
+        else:
+            counter = 0
+            for d in dest_cluster_config:
+                cluster_id = d['cluster_id']
+                if self.import_mode == 'live':
+                    json_data = {'cluster_name': cluster_name_list[counter]}
+                    headers = {'Content-Type': 'application/json', 'Accept':'application/json', 'csp-auth-token': self.vmc_auth.access_token}
+                    url = f'{self.strProdURL}/api/inventory/{self.dest_org_id}/vmc-aws/clusters/{cluster_id}:rename-cluster'
+                    response = requests.post(url, headers=headers, json=json_data)
+                    if response.status_code == 202:
+                        print(f'Cluster-{counter} renamed to {cluster_name_list[counter]}')
+                    else:
+                        self.error_handling(response)
+                else:
+                    print(f'TEST Mode - Cluster rename for Cluster-{counter} would have been renamed to {cluster_name_list[counter]}')
+                    counter = counter + 1
+                    
 
     def convertServiceRolePayload(self, sourcePayload: str) -> bool:
         """Converts a ServiceRole payload from its default format to the format required to add it to a User. Saves results to convertedServiceRolePayload """

@@ -815,6 +815,12 @@ def main(args):
                 print(f'IPv6 not enabled on {ioObj.dest_sddc_name}')
         else:
             print('IPv6 enablement skipped')
+        
+        if ioObj.cluster_rename is True:
+            print('Cluster rename beginning...')
+            ioObj.rename_sddc_clusters()
+        else:
+            print('Cluster rename skipped')
 
         if ioObj.network_import is True:
             print("Beginning CGW network import...")
