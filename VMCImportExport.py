@@ -300,7 +300,15 @@ class VMCImportExport:
         self.nsx_adv_fw_policies_import_filename = self.loadConfigFilename(config,"importConfig","nsx_adv_fw_policies_import_filename")
         self.nsx_adv_fw_rules_import_filename = self.loadConfigFilename(config,"importConfig","nsx_adv_fw_rules_import_filename")
 
-
+        #NSX Layer 7 Context Profiles
+        self.nsx_l7_fqdn_export = self.loadConfigFlag(config, 'exportConfig', 'nsx_l7_fqdn_export')
+        self.nsx_l7_fqdn_filename = self.loadConfigFilename(config, 'exportConfig', 'nsx_l7_fqdn_filename')
+        self.nsx_l7_context_profile_export = self.loadConfigFlag(config, 'exportConfig', 'nsx_l7_context_profile_export')
+        self.nsx_l7_context_profile_filename = self.loadConfigFilename(config, 'exportConfig', 'nsx_l7_context_profile_filename')
+        self.nsx_l7_fqdn_import = self.loadConfigFlag(config, 'importConfig', 'nsx_l7_fqdn_import')
+        self.nsx_l7_fqdn_import_filename = self.loadConfigFilename(config, 'importConfig', 'nsx_l7_fqdn_import_filename')
+        self.nsx_l7_context_profile_import = self.loadConfigFlag(config, 'importConfig', 'nsx_l7_context_profile_import')
+        self.nsx_l7_context_profile_import_filename = self.loadConfigFilename(config, 'importConfig', 'nsx_l7_context_profile_import_filename')
 
         #SDDC Info
         self.sddc_info_filename     = self.loadConfigFilename(config,"exportConfig","sddc_info_filename")
@@ -1006,6 +1014,36 @@ class VMCImportExport:
         json_response = response.json()
         nsxaf_rules = json_response['results'][0]
         return True, nsxaf_rules
+    
+    def export_fqdn_attribute(self):
+        """"Export FQDN custom attributes for L7 context profiles"""
+        url = f'{self.proxy_url}/policy/api/v1/infra/context-profiles/custom-attributes/default'
+        response = self.invokeVMCGET(url)
+        if response is None or response.status_code != 200:
+            self.error_handling(response)
+            return False
+        else:
+            json_response = response.json()
+            fqdn_attributes = json_response['results'][0]['attributes'][0]
+            fname = self.export_path / self.nsx_l7_fqdn_filename
+            with open(fname, 'w') as outfile:
+                json.dump(fqdn_attributes, outfile, indent=4)
+            return True
+    
+    def export_l7_cp(self):
+        """Export NSX Layer 7 Context Profiles"""
+        url = f'{self.proxy_url}/policy/api/v1/infra/context-profiles'
+        response = self.invokeVMCGET(url)
+        if response is None or response.status_code != 200:
+            self.error_handling(response)
+            return False
+        else:
+            json_response = response.json()
+            l7_cp = json_response['results']
+            fname = self.export_path / self.nsx_l7_context_profile_filename
+            with open(fname, 'w') as outfile:
+                json.dump(l7_cp, outfile, indent=4)
+            return True
 
     def export_ral(self):
         """Exports the SDDCs Route Aggregation List(s)"""
@@ -2121,7 +2159,7 @@ class VMCImportExport:
                 else:
                     print(f'TEST Mode - Cluster rename for Cluster-{counter} would have been renamed to {cluster_name_list[counter]}')
                     counter = counter + 1
-                    
+
 
     def convertServiceRolePayload(self, sourcePayload: str) -> bool:
         """Converts a ServiceRole payload from its default format to the format required to add it to a User. Saves results to convertedServiceRolePayload """
@@ -3398,6 +3436,67 @@ class VMCImportExport:
         else:
             print(f'IPv6 would have been enabled on the destination SDDC')
             return
+
+    def import_fqdn_attributes(self):
+        """Import FQDN attributes for L7 Context Profiles"""
+        self.vmc_auth.check_access_token_expiration()
+        fname = self.import_path / self.nsx_l7_fqdn_import_filename
+        with open(fname) as filehandle:
+            fqdn_import = json.load(filehandle)
+        json_data = {}
+        json_data['key'] = fqdn_import['key']
+        json_data['value'] = fqdn_import['value']
+        json_data['datatype'] = fqdn_import['datatype']
+        if self.import_mode == 'live':
+            url = f'{self.proxy_url}/policy/api/v1/infra/context-profiles/custom-attributes/default?action=add'
+            headers = {"Content-Type": "application/json", "Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token}
+            if self.sync_mode is True:
+                response = requests.patch(url, headers=headers, json=json_data)
+            else:
+                response = requests.post(url, headers=headers, json=json_data)
+            if response.status_code != 200:
+                self.error_handling(response)
+                return False
+            else:
+                print('FQDN attributes imported')
+        else:
+            print('TEST Mode - FQDN attributes would have been imported')
+    
+
+    def import_l7_cp(self):
+        """Import NSX layer 7 context profiles for DFW"""
+        self.vmc_auth.check_access_token_expiration()
+        fname = self.import_path / self.nsx_l7_context_profile_import_filename
+        with open(fname) as filehandle:
+            l7_cp = json.load(filehandle)
+        for c in l7_cp:
+            if c['_create_user'] == 'system':
+                pass
+            else:
+                json_data={}
+                json_data['attributes'] = c['attributes']
+                json_data['resource_type'] = c['resource_type']
+                json_data['id'] = c['id']
+                json_data['display_name'] = c['display_name']
+                if 'tags' in c:
+                    json_data['tags'] = c['tags']
+                if 'description' in c:
+                    json_data['description'] = c['description']
+                url_path = c['path']
+                if self.import_mode == 'live':
+                    url = f'{self.proxy_url}/policy/api/v1{url_path}'
+                    headers = {"Content-Type": "application/json", "Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token}
+                    if self.sync_mode is True:
+                        response = requests.patch(url, headers=headers, json=json_data)
+                    else:
+                        response = requests.put(url, headers=headers, json=json_data)
+                    if response.status_code != 200:
+                        self.error_handling(response)
+                        print(f'Error importing context profile {c["display_name"]}')
+                    else:
+                        print(f'Context Profile {c["display_name"]} successfully imported')
+                else:
+                    print(f'TEST Mode - L7 Context Profile {c["display_name"]} would have been imported')
 
 
     def importVPN(self):
