@@ -1143,6 +1143,8 @@ class VMCImportExport:
                 payload["destination_groups"] = commEnt["destination_groups"]
                 if "scope" in commEnt:
                     payload["scope"] = commEnt["scope"]
+                if 'profiles' in commEnt:
+                    payload['profiles'] = commEnt['profiles']
                 payload["action"] = commEnt["action"]
                 payload["services"] = commEnt["services"]
                 payload["sequence_number"] = commEnt["sequence_number"]
