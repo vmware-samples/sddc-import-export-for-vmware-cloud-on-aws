@@ -3450,17 +3450,14 @@ class VMCImportExport:
         json_data['value'] = fqdn_import['value']
         json_data['datatype'] = fqdn_import['datatype']
         if self.import_mode == 'live':
-            url = f'{self.proxy_url}/policy/api/v1/infra/context-profiles/custom-attributes/default?action=add'
+            url = f'{self.proxy_url}/policy/api/v1/infra/context-profiles/custom-attributes/default'
             headers = {"Content-Type": "application/json", "Accept": "application/json", 'csp-auth-token': self.vmc_auth.access_token}
-            if self.sync_mode is True:
-                response = requests.patch(url, headers=headers, json=json_data)
-            else:
-                response = requests.post(url, headers=headers, json=json_data)
+            response = requests.patch(url, headers=headers, json=json_data)
             if response.status_code != 200:
                 self.error_handling(response)
                 return False
             else:
-                print('FQDN attributes imported')
+                print('Custom FQDN attributes imported')
         else:
             print('TEST Mode - FQDN attributes would have been imported')
     
