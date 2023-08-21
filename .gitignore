@@ -6,3 +6,6 @@ CONTRIBUTING.md
 LICENSE.txt
 NOTICE.txt
 venv-impexp
+.idea
+.vscode
+*.code-workspace
