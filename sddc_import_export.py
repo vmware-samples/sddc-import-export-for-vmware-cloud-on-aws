@@ -684,6 +684,26 @@ def main(args):
                 print("Tier-1 VPN export error")
         else:
             print("Tier-1 VPN export skipped.")
+        
+        if ioObj.nsx_l7_fqdn_export is True:
+            print('Beginning NSX Layer 7 FQDN profile export')
+            retval = ioObj.export_fqdn_attribute()
+            if retval is True:
+                print('FQDN profiles exported')
+            else:
+                print('FQDN profile export failed')
+        else:
+            print('FQDN profile export skipped')
+        
+        if ioObj.nsx_l7_context_profile_export is True:
+            print('Beginning NSX Layer 7 context profile export')
+            retval - ioObj.export_l7_cp()
+            if retval is True:
+                print('NSX L7 Context Profile export successful')
+            else:
+                print('NSX L7 Context Profile export error')
+        else:
+            print('NSX L7 Context Profile export skipped')
 
         if ioObj.export_history is True:
             retval = ioObj.zipJSONfiles()
@@ -815,6 +835,12 @@ def main(args):
                 print(f'IPv6 not enabled on {ioObj.dest_sddc_name}')
         else:
             print('IPv6 enablement skipped')
+        
+        if ioObj.cluster_rename is True:
+            print('Cluster rename beginning...')
+            ioObj.rename_sddc_clusters()
+        else:
+            print('Cluster rename skipped')
 
         if ioObj.network_import is True:
             print("Beginning CGW network import...")
@@ -910,14 +936,6 @@ def main(args):
             if ioObj.ral_import is False:
                 print('Import of Route Configurations may be impacted by missing Route Aggregations lists')
             ioObj.import_route_config()
-
-        if ioObj.dfw_import is True:
-            print("Beginning DFW import...")
-            if ioObj.services_import is False:
-                print('Service import is set to false, this can cause import errors if service objects are missing.')
-            if ioObj.compute_groups_import is False:
-                print('Compute groups import is set to false, this can cause import errors if compute group objects are missing.')
-            ioObj.importSDDCDFWRule()
         
         if ioObj.flex_segment_import is True:
             print("Beginning import of flexible segments...")
@@ -946,6 +964,14 @@ def main(args):
             print("Beginning VPN import...")
             ioObj.importVPN()
 
+        if ioObj.nsx_l7_fqdn_import is True:
+            print('Beginning import of custom FQDN attributes')
+            ioObj.import_fqdn_attributes()
+        
+        if ioObj.nsx_l7_context_profile_import is True:
+            print('Beginning NSX Layer7 Context Profile import')
+            ioObj.import_l7_cp()
+
         if ioObj.nsx_adv_fw_import is True:
             if (ioObj.cgw_import is False):
                 print("NSX Advanced Firewall export is enabled, but CGW export is not.")
@@ -953,6 +979,14 @@ def main(args):
 
             print("Beginning NSX advanced firewall import...")
             ioObj.import_advanced_firewall()
+        
+        if ioObj.dfw_import is True:
+            print("Beginning DFW import...")
+            if ioObj.services_import is False:
+                print('Service import is set to false, this can cause import errors if service objects are missing.')
+            if ioObj.compute_groups_import is False:
+                print('Compute groups import is set to false, this can cause import errors if compute group objects are missing.')
+            ioObj.importSDDCDFWRule()
 
         print("Import has been concluded. Thank you for using SDDC Import/Export for VMware Cloud on AWS.")
 
