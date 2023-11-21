@@ -226,6 +226,49 @@ def main(args):
             print('Exporting folder paths from source vCenter...')
             srcdc.export_folder_paths(ioObj.export_path / ioObj.vcenter_folders_filename)
             print('Export complete.')
+        if ioObj.export_vcenter_categories:
+            srcvc = vcenter.vCenter(ioObj.srcvCenterURL,ioObj.srcvCenterUsername,ioObj.srcvCenterPassword,ioObj.srcvCenterSSLVerify)
+            srcdc = srcvc.get_datacenter(ioObj.srcvCenterDatacenter)
+            print('Exporting tag categories from source vCenter...')
+            srcdc.export_tag_categories(ioObj.export_path / ioObj.vcenter_categories_filename)
+            print('Export complete.')
+        if ioObj.export_vcenter_tags:
+            srcvc = vcenter.vCenter(ioObj.srcvCenterURL,ioObj.srcvCenterUsername,ioObj.srcvCenterPassword,ioObj.srcvCenterSSLVerify)
+            srcdc = srcvc.get_datacenter(ioObj.srcvCenterDatacenter)
+            print('Exporting tags from source vCenter...')
+            srcdc.export_tags(ioObj.export_path / ioObj.vcenter_tags_filename)
+            print('Export complete.')
+        if ioObj.export_history is True:
+            retval = ioObj.zipJSONfiles()
+            if retval is False:
+                print('JSON files were not successfully zipped.')
+            else:
+                print('JSON files successfully zipped into', ioObj.export_zip_name)
+                if ioObj.export_type == 's3':
+                    print('Uploading to s3 bucket',ioObj.aws_s3_export_bucket)
+                    if len(ioObj.aws_s3_export_access_id) == 0:
+                        #Blank access ID - running in Lambda mode, do not pass the key and secret, the Lambda role will grant access to the bucket
+                        s3 = boto3.client('s3')
+                    else:
+                        s3 = boto3.client('s3',aws_access_key_id=ioObj.aws_s3_export_access_id,aws_secret_access_key=ioObj.aws_s3_export_access_secret)
+                    try:
+                        fname = ioObj.export_folder + '/' + ioObj.export_zip_name
+                        with open(fname, "rb") as f:
+                            response = s3.upload_fileobj(f,ioObj.aws_s3_export_bucket,ioObj.export_zip_name)
+                        print('S3 upload successful')
+                    except Exception as e:
+                        print('Failed to upload file.')
+                        print(e)
+
+                if ioObj.export_purge_after_zip == True:
+                    print('export_purge_after_zip flag is true, deleting JSON files')
+                    retval = ioObj.purgeJSONfiles()
+                    if retval is False:
+                        print('Unable to purge JSON files.')
+
+            retval = ioObj.purgeJSONzipfiles()
+            if retval is True:
+                print('Zipfile maintenance completed with no errors.')
 
     if intent_name == "testbed":
         no_intent_found = False
@@ -304,6 +347,35 @@ def main(args):
 
     if intent_name == "import-vcenter":
         no_intent_found = False
+
+        if import_first_file != "":
+            files = glob.glob(import_first_file + '/*.zip')
+            if len(files) > 0:
+                import_file_path = files[0]
+                print('Found',import_file_path,'in folder.')
+            else:
+                print('Found no zipfiles in',import_first_file)
+
+        # User passed a zipfile path to use as the import source
+        if import_file_path != "":
+            ioObj.import_folder = os.path.dirname(import_file_path)
+            ioObj.import_path = Path(ioObj.import_folder)
+            ioObj.export_folder = os.path.dirname(import_file_path)
+            ioObj.export_path = Path(ioObj.export_folder)
+            retval = ioObj.purgeJSONfiles()
+            if retval is False:
+                stop_script = yes_or_no("Errors purging old files. Stop running script?")
+                if stop_script is True:
+                    sys.exit()
+            retval = ioObj.unzipJSONfiles(import_file_path)
+            if retval is False:
+                stop_script = yes_or_no("Could not unzip archive. Stop running script?")
+                if stop_script is True:
+                    sys.exit()
+            else:
+                print('Extracted JSON from zip archive',import_file_path,"- continuing with import.")
+                print('Loaded import and export folder from command line:', ioObj.import_path )
+
         if ioObj.import_vcenter_folders:
             destvc = vcenter.vCenter(ioObj.destvCenterURL,ioObj.destvCenterUsername,ioObj.destvCenterPassword,ioObj.destvCenterSSLVerify)
             destdc = destvc.get_datacenter(ioObj.destvCenterDatacenter)
@@ -313,6 +385,26 @@ def main(args):
             else:
                 test_mode = True
             destdc.import_folder_paths(ioObj.import_path / ioObj.vcenter_folders_filename,test_mode=test_mode)
+            print('Import complete.')
+        if ioObj.import_vcenter_categories:
+            destvc = vcenter.vCenter(ioObj.destvCenterURL,ioObj.destvCenterUsername,ioObj.destvCenterPassword,ioObj.destvCenterSSLVerify)
+            destdc = destvc.get_datacenter(ioObj.destvCenterDatacenter)
+            print('Importing tag categories into destination vCenter...')
+            if ioObj.import_mode == 'live':
+                test_mode = False
+            else:
+                test_mode = True
+            destdc.import_tag_categories(ioObj.import_path / ioObj.vcenter_categories_filename,test_mode=test_mode)
+            print('Import complete.')
+        if ioObj.import_vcenter_tags:
+            destvc = vcenter.vCenter(ioObj.destvCenterURL,ioObj.destvCenterUsername,ioObj.destvCenterPassword,ioObj.destvCenterSSLVerify)
+            destdc = destvc.get_datacenter(ioObj.destvCenterDatacenter)
+            print('Importing tags into destination vCenter...')
+            if ioObj.import_mode == 'live':
+                test_mode = False
+            else:
+                test_mode = True
+            destdc.import_tags(ioObj.import_path / ioObj.vcenter_tags_filename,test_mode=test_mode)
             print('Import complete.')
 
     if intent_name == "export-nsx":
