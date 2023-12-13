@@ -101,6 +101,12 @@ def main(args):
     ap.add_argument("-s3b","--aws-s3-export-bucket", required=False,help="AWS bucket name for export to S3")
     ap.add_argument("-rss","--role-sync-source-user-email", required=False, help="The source email address used as a template for syncing roles")
     ap.add_argument("-rsd","--role-sync-dest-user-emails", required=False, help="The dest email addresses used as a target for syncing roles, formatted as a set")
+    ap.add_argument("-sv", "--source-vcenter-url", required=False, help="Source vCenter URL")
+    ap.add_argument("-dv", "--dest-vcenter-url", required=False, help="Destination vCenter URL")
+    ap.add_argument("-svu","--source-vcenter-username", required=False,help="Source vCenter Username")
+    ap.add_argument("-dvu","--dest-vcenter-username", required=False,help="Destination vCenter Username")
+    ap.add_argument("-svp","--source-vcenter-password", required=False,help="Source vCenter Password")
+    ap.add_argument("-dvp","--dest-vcenter-password", required=False,help="Destination vCenter Password")
 
     args = ap.parse_args(args)
 
@@ -174,6 +180,31 @@ def main(args):
     if args.role_sync_dest_user_emails:
         ioObj.RoleSyncDestUserEmails = args.role_sync_dest_user_emails.split(',')
         print('Loaded role sync dest user emails from command line')
+
+    # Check the optional command-line arguments to override the values in vcenter.ini
+    if args.source_vcenter_url:
+        ioObj.srcvCenterURL = args.source_vcenter_url
+        print('Loaded source vcenter URL from command line')
+
+    if args.dest_vcenter_url:
+        ioObj.destvCenterURL = args.dest_vcenter_url
+        print('Loaded source vcenter URL from command line')
+
+    if args.source_vcenter_username:
+        ioObj.srcvCenterUsername = args.source_vcenter_username
+        print('Loaded source vcenter username from command line')
+
+    if args.dest_vcenter_username:
+        ioObj.destvCenterUsername = args.dest_vcenter_username
+        print('Loaded source vcenter username from command line')
+
+    if args.source_vcenter_password:
+        ioObj.srcvCenterPassword = args.source_vcenter_password
+        print('Loaded source vcenter password from command line')
+
+    if args.dest_vcenter_password:
+        ioObj.destvCenterPassword = args.dest_vcenter_password
+        print('Loaded source vcenter password from command line')
 
     # Variable added so we can have an intent run multiple operations
     no_intent_found = True
