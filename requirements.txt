@@ -4,7 +4,7 @@ configparser==6.0.0
 idna==3.4
 PTable==0.9.2
 requests==2.31.0
-urllib3==1.26.16
+urllib3==1.26.18
 wcwidth==0.2.6
 boto3==1.28.30
 prettytable==3.8.0
