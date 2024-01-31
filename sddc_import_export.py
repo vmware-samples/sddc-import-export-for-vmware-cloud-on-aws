@@ -415,8 +415,13 @@ def main(args):
         if retval == False:
             print("Unable to load Source SDDC Data. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
+        
+        retval = ioObj.connectNSX()
+        if retval == False:
+            print(f'Unable to connect to Source NSX-T Manager.')
+            sys.exit(1)
 
-        print(f'Export configuration: Org {ioObj.source_org_display_name} ({ioObj.source_org_id}), SDDC {ioObj.source_sddc_name} ({ioObj.source_sddc_id}), SDDC version {ioObj.source_sddc_version}')
+        print(f'Export configuration: Org {ioObj.source_org_display_name} ({ioObj.source_org_id}), SDDC {ioObj.source_sddc_name} ({ioObj.source_sddc_id}), SDDC version {ioObj.source_sddc_version}, NSX-T Manager reachable.')
 
         ioObj.vmc_auth.getAccessToken(ioObj.dest_refresh_token)
         if (ioObj.vmc_auth.access_token == ""):
@@ -437,8 +442,13 @@ def main(args):
         if retval == False:
             print("Unable to load Dest SDDC Data. Server response:{}".format(ioObj.lastJSONResponse))
             sys.exit()
+        
+        retval = ioObj.connectNSX()
+        if retval == False:
+            print(f'Unable to connect to Destination NSX-T Manager.')
+            sys.exit(1)
 
-        print(f'Import configuration: Org {ioObj.dest_org_display_name} ({ioObj.dest_org_id}), SDDC {ioObj.dest_sddc_name} ({ioObj.dest_sddc_id}), SDDC version {ioObj.dest_sddc_version}')
+        print(f'Import configuration: Org {ioObj.dest_org_display_name} ({ioObj.dest_org_id}), SDDC {ioObj.dest_sddc_name} ({ioObj.dest_sddc_id}), SDDC version {ioObj.dest_sddc_version}, NSX-T Manager reachable.')
 
     if intent_name == "export" or intent_name == "export-import":
         no_intent_found = False

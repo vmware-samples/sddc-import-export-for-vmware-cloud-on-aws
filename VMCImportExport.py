@@ -2215,7 +2215,7 @@ class VMCImportExport:
         try:
             response = requests.get(url,headers= {"Authorization":"Bearer " + self.vmc_auth.access_token})
             if response.status_code != 200:
-                self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
+                self.error_handling(response)
             return response
         except Exception as e:
                 self.lastJSONResponse = e
@@ -2225,25 +2225,13 @@ class VMCImportExport:
         """Invokes a VMC On AWS GET request"""
         self.vmc_auth.check_access_token_expiration()
         myHeader = {'csp-auth-token': self.vmc_auth.access_token}
-        attempts = 1
-        status_code = 0
-        try:
-            while attempts <=3 and status_code != 200:
-                if attempts > 1:
-                    print('Retrying...')
-                response = requests.get(url,headers=myHeader)
-                status_code = response.status_code
-                if status_code == 200:
-                    break
-                self.lastJSONResponse = f'API Call Status {response.status_code}, text:{response.text}'
-                if status_code == 504:
-                    attempts +=1
-                    print('Received gateway time out error 504, pausing...')
-                    time.sleep(5)
+        response = requests.get(url, headers=myHeader)
+        if response.status_code == requests.codes.ok:
             return response
-        except Exception as e:
-                self.lastJSONResponse = e
-                return None
+        else:
+            self.error_handling(response)
+            sys.exit(1)
+
 
     def invokeVMCPUT(self, url: str,json_data: str) -> requests.Response:
         """Invokes a VMC on AWS PUT request"""
@@ -3600,6 +3588,18 @@ class VMCImportExport:
             print("Unable to get NSX-T proxy URL. API response:")
             print(json_response)
         return self.proxy_url
+
+    def connectNSX(self):
+        """Test connectivity to NSX-T Manager"""
+        self.vmc_auth.check_access_token_expiration()
+        my_header = {'csp-auth-token': self.vmc_auth.access_token}
+        my_url = f'{self.proxy_url}/policy/api/v1/infra'
+        response = requests.get(my_url, headers=my_header)
+        if response.status_code == requests.codes.ok:
+            return True
+        else:
+            self.error_handling(response)
+            return False
 
     def loadConfigFlag(self,config,section,key):
         """Load a True/False flag from the config file"""
