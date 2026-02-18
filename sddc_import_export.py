@@ -6,8 +6,8 @@
 # SDDC Import/Export for VMware Cloud on AWS
 
 ################################################################################
-### Copyright 2020-2023 VMware, Inc.
-### SPDX-License-Identifier: BSD-2-Clause
+### Copyright (c) CA, Inc. All rights reserved.
+### Licensed under CA, Inc. SOFTWARE LICENSE AGREEMENT
 ################################################################################
 
 # For git BASH on Windows, you can use something like this 
