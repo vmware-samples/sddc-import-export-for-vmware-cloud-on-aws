@@ -136,6 +136,96 @@ class Datacenter:
         vm = self._get_vm_by_name(vm_name, parent_folder=folder)
         return vm
 
+    def _create_tag_category(self, name, description, cardinality, associable_types):
+        create_spec = self._vsphere_client.tagging.Category.CreateSpec()
+        create_spec.name = name
+        create_spec.description = description
+        create_spec.cardinality = cardinality
+        create_spec.associable_types = set(associable_types)
+        return self._vsphere_client.tagging.Category.create(create_spec)
+
+    def _create_tag(self, name, description, category_id):
+        create_spec = self._vsphere_client.tagging.Tag.CreateSpec()
+        create_spec.name = name
+        create_spec.description = description
+        create_spec.category_id = category_id
+        return self._vsphere_client.tagging.Tag.create(create_spec)
+
+    def _get_tag_categories(self):
+        categories = set()
+        for id in self._vsphere_client.tagging.Category.list():
+            category = self._vsphere_client.tagging.Category.get(id)
+            categories.add (category.name)
+        return categories
+
+    def _get_tags(self):
+        tags = set()
+        for id in self._vsphere_client.tagging.Tag.list():
+            tag = self._vsphere_client.tagging.Tag.get(id)
+            tags.add (tag.name)
+        return tags
+
+    def export_tag_categories(self, export_file_path: str) -> None:
+        categories = []
+        for id in self._vsphere_client.tagging.Category.list():
+            category = self._vsphere_client.tagging.Category.get(id)
+            new_category = {}
+            new_category['name'] = category.name
+            new_category['description'] = category.description
+            new_category['cardinality'] = category.cardinality
+            new_category['associable_types'] = list(category.associable_types)
+            categories.append(new_category)
+
+        with open(export_file_path, 'w') as paths_file:
+            json.dump(categories, paths_file)
+
+    def export_tags(self, export_file_path: str) -> None:
+        categories = {}
+        tags = []
+        for id in self._vsphere_client.tagging.Category.list():
+            category = self._vsphere_client.tagging.Category.get(id)
+            categories[category.id] = category.name
+        for id in self._vsphere_client.tagging.Tag.list():
+            tag = self._vsphere_client.tagging.Tag.get(id)
+            new_tag = {}
+            new_tag['name'] = tag.name
+            new_tag['category'] = categories[tag.category_id]
+            new_tag['description'] = tag.description
+            tags.append(new_tag)
+
+        with open(export_file_path, 'w') as paths_file:
+            json.dump(tags, paths_file)
+
+    def import_tag_categories(self, import_file_path: str, test_mode: bool = False) -> None:
+        with open(import_file_path) as paths_file:
+            categories = json.load(paths_file)
+
+        existing_categories = self._get_tag_categories()
+
+        for category in categories:
+            if test_mode:
+                print(f'TEST MODE: would have created category {category}')
+            else:
+                if category['name'] not in existing_categories:
+                    self._create_tag_category(category['name'], category['description'], category['cardinality'], category['associable_types'] )
+
+    def import_tags(self, import_file_path: str, test_mode: bool = False) -> None:
+        with open(import_file_path) as paths_file:
+            tags = json.load(paths_file)
+
+        categories = {}
+        for id in self._vsphere_client.tagging.Category.list():
+            category = self._vsphere_client.tagging.Category.get(id)
+            categories[category.name] = category.id
+
+        existing_tags = self._get_tags()
+
+        for tag in tags:
+            if test_mode:
+                print(f'TEST MODE: would have created tag {tag}')
+            else:
+                if tag['name'] not in existing_tags:
+                    self._create_tag(tag['name'], tag['description'],categories[tag['category']])
 
 class vCenter:
     def __init__(self, address, username, password, ssl_verification=False):

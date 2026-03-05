@@ -381,7 +381,10 @@ python3 sddc_import_export.py -o import-nsx
 
 ### 1.4.6. Export vCenter
 
-To export your vCenter server folder structure, set the export_vcenter_folders flag in config.ini to True. Then run the export command:
+To export your vCenter server folder structure, set the export_vcenter_folders flag in config.ini to True.
+To export your vCenter server Tag Categories, set the export_vcenter_catagories flag in config.ini to True. 
+To export your vCenter server Tags, set the export_vcenter_tags flag in config.ini to True. 
+Then run the export command:
 
 ```
 python3 sddc_import_export.py -o export-vcenter
@@ -389,7 +392,10 @@ python3 sddc_import_export.py -o export-vcenter
 
 ### 1.4.7. Import vCenter
 
-To Import your vCenter server folder structure, set the import_vcenter_folders flag in config.ini to True. Then run the import command:
+To Import your vCenter server folder structure, set the import_vcenter_folders flag in config.ini to True.
+To Import your vCenter server catagories, set the import_vcenter_catagories flag in config.ini to True.
+To Import your vCenter server tags, set the import_vcenter_tags flag in config.ini to True.
+Then run the import command:
 
 ```
 python3 sddc_import_export.py -o import-vcenter

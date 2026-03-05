@@ -73,6 +73,10 @@ class VMCImportExport:
         self.network_import_exclude_list = []
         self.export_vcenter_folders = False
         self.import_vcenter_folders = False
+        self.export_vcenter_catagories = False
+        self.import_vcenter_catagories = False
+        self.export_vcenter_tags = False
+        self.import_vcenter_tags = False
         self.user_search_results_json = ""
         self.convertedServiceRolePayload = ""
         self.RoleSyncSourceUserEmail = ""
@@ -142,6 +146,16 @@ class VMCImportExport:
         self.import_vcenter_folders = self.loadConfigFlag(config,"importConfig","import_vcenter_folders")
 
         self.vcenter_folders_filename = self.loadConfigFilename(config,"exportConfig","vcenter_folders_filename")
+
+        self.export_vcenter_categories = self.loadConfigFlag(config,"exportConfig","export_vcenter_categories")
+        self.import_vcenter_categories = self.loadConfigFlag(config,"importConfig","import_vcenter_categories")
+
+        self.vcenter_categories_filename = self.loadConfigFilename(config,"exportConfig","vcenter_categories_filename")
+
+        self.export_vcenter_tags = self.loadConfigFlag(config,"exportConfig","export_vcenter_tags")
+        self.import_vcenter_tags = self.loadConfigFlag(config,"importConfig","import_vcenter_tags")
+
+        self.vcenter_tags_filename = self.loadConfigFilename(config,"exportConfig","vcenter_tags_filename")
 
         #NSX manager
         self.srcNSXmgrURL               =  vCenterConfig.get("nsxConfig","srcNSXmgrURL")
@@ -3679,6 +3693,10 @@ class VMCImportExport:
                 return 'vpn-local-bgp.json'
             elif (key == 'vcenter_folders_filename'):
                 return 'vcenterfolderpaths.json'
+            elif (key == 'vcenter_categories_filename'):
+                return 'vcentercategories.json'
+            elif (key == 'vcenter_tags_filename'):
+                return 'vcentertags.json'
             elif (key == 'network_dhcp_static_binding_filename'):
                 return 'dhcp-static-binding.json'
 
