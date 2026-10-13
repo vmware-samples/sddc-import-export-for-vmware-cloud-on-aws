@@ -1016,7 +1016,7 @@ class VMCImportExport:
         return True, nsxaf_rules
     
     def export_fqdn_attribute(self):
-        """"Export FQDN custom attributes for L7 context profiles"""
+        """Export FQDN custom attributes for L7 context profiles"""
         url = f'{self.proxy_url}/policy/api/v1/infra/context-profiles/custom-attributes/default'
         response = self.invokeVMCGET(url)
         if response is None or response.status_code != 200:
@@ -1024,10 +1024,22 @@ class VMCImportExport:
             return False
         else:
             json_response = response.json()
+            
+            # Check if results exist
+            if 'results' not in json_response or len(json_response['results']) == 0:
+                print("Warning: No results key found in FQDN attributes API response.")
+                return False
+            
+            # Check if attributes key exists in the first result
+            if 'attributes' not in json_response['results'][0]:
+                print("Info: No FQDN custom attributes defined (or vDefend advanced services disabled). Skipping export.")
+                return True
+            
             fqdn_attributes = json_response['results'][0]['attributes'][0]
             fname = self.export_path / self.nsx_l7_fqdn_filename
             with open(fname, 'w') as outfile:
                 json.dump(fqdn_attributes, outfile, indent=4)
+            print("FQDN custom attributes exported.")
             return True
     
     def export_l7_cp(self):
